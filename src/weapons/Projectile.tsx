@@ -39,35 +39,35 @@ export function Projectile({ position, direction, speed, color, onDestroy, onHit
         trailRef.current.geometry.attributes.position.needsUpdate = true
       }
       
-            // Collision detection - use longer ray and walk up parent chain
-            const raycaster = new THREE.Raycaster(
-              meshRef.current.position,
-              direction.clone().normalize(),
-              0,
-              2.0 // Increased range for better detection
-            )
+      // Distance-based collision detection - more reliable than raycaster
+      const bulletPos = new THREE.Vector3()
+      meshRef.current.getWorldPosition(bulletPos)
       
-            const intersects = raycaster.intersectObjects(scene.children, true)
+      const enemyPos = new THREE.Vector3()
+      let foundEnemy = false
       
-            for (const intersect of intersects) {
-              // Walk up the parent chain to find the enemy mesh with userData
-              let target: THREE.Object3D | null = intersect.object
-              while (target && !(target.userData?.type === 'enemy' && target.userData?.takeDamage)) {
-                target = target.parent
-              }
-        
-              if (target && target.userData?.type === 'enemy' && target.userData?.takeDamage) {
-                target.userData.takeDamage(25)
-                const hitPos: [number, number, number] = [
-                  meshRef.current.position.x,
-                  meshRef.current.position.y,
-                  meshRef.current.position.z
-                ]
-                onHit?.(hitPos)
-                onDestroy()
-                return
-              }
-            }
+      scene.traverse((obj) => {
+        if (foundEnemy) return
+        if (obj.userData?.type === 'enemy' && obj.userData?.takeDamage) {
+          obj.getWorldPosition(enemyPos)
+          const dist = bulletPos.distanceTo(enemyPos)
+          if (dist < 0.8) { // Hit radius - bullet radius + enemy radius
+            obj.userData.takeDamage(25)
+            foundEnemy = true
+          }
+        }
+      })
+      
+      if (foundEnemy) {
+        const hitPos: [number, number, number] = [
+          bulletPos.x,
+          bulletPos.y,
+          bulletPos.z
+        ]
+        onHit?.(hitPos)
+        onDestroy()
+        return
+      }
       
       lifetime.current += delta
       if (lifetime.current > 3) {

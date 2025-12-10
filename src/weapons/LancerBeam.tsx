@@ -25,21 +25,30 @@ export function LancerBeam({ isActive, turretPosition, turretDirection }: Lancer
     beamRef.current.position.copy(beamCenter)
     beamRef.current.lookAt(beamEnd)
     
-        // Damage enemies in beam path
-        const raycaster = new THREE.Raycaster(beamStart, turretDirection.clone().normalize(), 0, beamLength)
-        const intersects = raycaster.intersectObjects(scene.children, true)
+    // Distance-based collision detection for beam
+    // Check all enemies and see if they're close to the beam line
+    const enemyPos = new THREE.Vector3()
     
-        for (const intersect of intersects) {
-          // Walk up the parent chain to find the enemy mesh with userData
-          let target: THREE.Object3D | null = intersect.object
-          while (target && !(target.userData?.type === 'enemy' && target.userData?.takeDamage)) {
-            target = target.parent
-          }
-      
-          if (target && target.userData?.type === 'enemy' && target.userData?.takeDamage) {
-            target.userData.takeDamage(50 * delta) // Continuous damage
+    scene.traverse((obj) => {
+      if (obj.userData?.type === 'enemy' && obj.userData?.takeDamage) {
+        obj.getWorldPosition(enemyPos)
+        
+        // Calculate distance from enemy to beam line
+        const beamDir = turretDirection.clone().normalize()
+        const toEnemy = enemyPos.clone().sub(beamStart)
+        const projLength = toEnemy.dot(beamDir)
+        
+        // Only check enemies in front of the turret and within beam length
+        if (projLength > 0 && projLength < beamLength) {
+          const closestPoint = beamStart.clone().add(beamDir.multiplyScalar(projLength))
+          const distToBeam = enemyPos.distanceTo(closestPoint)
+          
+          if (distToBeam < 0.8) { // Hit radius
+            obj.userData.takeDamage(50 * delta) // Continuous damage
           }
         }
+      }
+    })
     
     // Update trail effect
     if (trailRef.current) {
