@@ -2,6 +2,20 @@
 
 A 3D multiplayer space shooter game where players control turrets to battle against AI Bosses in an epic cosmic arena.
 
+## Implemented Features
+
+- Turret Controller (mouse rotation)
+- Photon Repeater weapon (click to fire)
+- Enemy spawning system
+- Collision detection and damage system
+- Bloom post-processing effects
+
+## Deploy
+
+Click the Deploy button to deploy on Vercel:
+
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/kaydenn-k/cosmic-turret-infinity-jackpot)
+
 ## Project Overview
 
 **Game Type:** 3D Multiplayer Space Shooter (1-4 Player Co-op PvE)
@@ -100,14 +114,16 @@ npm run build
 - [x] Project setup with Vite + React + TypeScript
 - [x] Three.js scene initialization
 - [x] Basic post-processing (Bloom)
-- [ ] Turret controls
+- [x] Turret controls
 
 ### Phase 2 - Weapons
-- [ ] Photon Repeater implementation
+- [x] Photon Repeater implementation
 - [ ] Lancer Beam implementation
 - [ ] Gravity Nova implementation
 
 ### Phase 3 - Enemies
+- [x] Enemy spawning system
+- [x] Collision detection
 - [ ] Mecha-Piranha AI
 - [ ] Crystal Jellyfish AI
 - [ ] Void Eater Boss AI

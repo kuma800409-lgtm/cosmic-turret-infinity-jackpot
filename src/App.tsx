@@ -1,43 +1,23 @@
-import { useRef } from 'react'
-import { Canvas, useFrame } from '@react-three/fiber'
+import { Canvas } from '@react-three/fiber'
 import { OrbitControls } from '@react-three/drei'
 import { EffectComposer, Bloom } from '@react-three/postprocessing'
-import type { Mesh } from 'three'
-
-function RotatingCube() {
-  const meshRef = useRef<Mesh>(null)
-
-  useFrame((_, delta) => {
-    if (meshRef.current) {
-      meshRef.current.rotation.x += delta * 0.5
-      meshRef.current.rotation.y += delta * 0.7
-    }
-  })
-
-  return (
-    <mesh ref={meshRef}>
-      <boxGeometry args={[2, 2, 2]} />
-      <meshStandardMaterial 
-        color="#00ffff" 
-        emissive="#004444"
-        emissiveIntensity={0.5}
-      />
-    </mesh>
-  )
-}
+import { PlayerTurret } from './game/PlayerTurret'
+import { EnemySpawner } from './game/EnemySpawner'
 
 function Scene() {
   return (
     <>
       <ambientLight intensity={0.3} />
       <directionalLight position={[5, 5, 5]} intensity={1} />
-      <RotatingCube />
+      <PlayerTurret position={[0, 0, 0]} />
+      <EnemySpawner />
       <OrbitControls />
       <EffectComposer>
         <Bloom 
-          intensity={1.5} 
-          luminanceThreshold={0.9} 
+          intensity={2.0} 
+          luminanceThreshold={0.4} 
           luminanceSmoothing={0.9}
+          mipmapBlur
         />
       </EffectComposer>
     </>
