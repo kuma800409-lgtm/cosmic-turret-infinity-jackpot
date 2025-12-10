@@ -6,6 +6,7 @@ import * as THREE from 'three'
 import { PlayerTurret } from './game/PlayerTurret'
 import { EnemySpawner } from './game/EnemySpawner'
 import { GameProvider, useGameState } from './game/GameState'
+import { AudioProvider, useAudio } from './audio/AudioManager'
 import { ScoreDisplay, HealthBar, GameOverScreen, ScorePopup } from './components/GameUI'
 
 // Screen shake camera component
@@ -166,6 +167,7 @@ const weaponInfo = {
 // Inner App component that uses game state
 function GameContent() {
   const { addScore, addKill, takeDamage, isPaused, isGameOver } = useGameState()
+  const { playShoot, playHit, playExplosion, playDamage, playUIClick, toggleMusic, isMusicPlaying } = useAudio()
   const [currentWeapon, setCurrentWeapon] = useState(1)
   const [shakeIntensity, setShakeIntensity] = useState(0)
   const [explosions, setExplosions] = useState<Array<{ id: number; position: THREE.Vector3 }>>([])
@@ -173,12 +175,14 @@ function GameContent() {
   
   const handleWeaponChange = useCallback((weapon: number) => {
     setCurrentWeapon(weapon)
-  }, [])
+    playUIClick()
+  }, [playUIClick])
   
   const handleScreenShake = useCallback(() => {
     setShakeIntensity(1)
     setTimeout(() => setShakeIntensity(0), 100)
-  }, [])
+    playShoot(currentWeapon)
+  }, [playShoot, currentWeapon])
   
   const handleEnemyKilled = useCallback((position: THREE.Vector3) => {
     addKill()
@@ -191,17 +195,19 @@ function GameContent() {
       score: 100,
       position: { x: window.innerWidth / 2, y: window.innerHeight / 2 - 100 }
     }])
-  }, [addKill, addScore, currentWeapon])
+    playExplosion()
+  }, [addKill, addScore, currentWeapon, playExplosion])
   
   const handleEnemyDamaged = useCallback((_damage: number, _position: THREE.Vector3) => {
-    // Could add damage numbers here
-  }, [])
+    playHit()
+  }, [playHit])
   
   const handleEnemyReachTurret = useCallback(() => {
     takeDamage(10)
     setShakeIntensity(3)
     setTimeout(() => setShakeIntensity(0), 200)
-  }, [takeDamage])
+    playDamage()
+  }, [takeDamage, playDamage])
   
   const handleExplosionComplete = useCallback((id: number) => {
     setExplosions(prev => prev.filter(e => e.id !== id))
@@ -330,6 +336,27 @@ function GameContent() {
         <div style={{ marginTop: '5px', opacity: 0.7 }}>Press 1/2/3 to switch weapons</div>
       </div>
       
+      {/* Music Toggle Button */}
+      <button
+        onClick={toggleMusic}
+        style={{
+          position: 'absolute',
+          top: '20px',
+          right: '20px',
+          padding: '8px 16px',
+          background: 'rgba(0,0,0,0.7)',
+          border: '2px solid #00ffff',
+          borderRadius: '5px',
+          color: '#00ffff',
+          fontFamily: 'monospace',
+          fontSize: '12px',
+          cursor: 'pointer',
+          textShadow: '0 0 5px #00ffff'
+        }}
+      >
+        {isMusicPlaying ? 'MUSIC: ON' : 'MUSIC: OFF'}
+      </button>
+      
       {/* Game Over Screen */}
       <GameOverScreen />
     </div>
@@ -338,9 +365,11 @@ function GameContent() {
 
 function App() {
   return (
-    <GameProvider>
-      <GameContent />
-    </GameProvider>
+    <AudioProvider>
+      <GameProvider>
+        <GameContent />
+      </GameProvider>
+    </AudioProvider>
   )
 }
 
