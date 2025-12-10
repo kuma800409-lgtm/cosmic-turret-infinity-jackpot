@@ -8,6 +8,7 @@ import { EnemySpawner } from './game/EnemySpawner'
 import { GameProvider, useGameState } from './game/GameState'
 import { AudioProvider, useAudio } from './audio/AudioManager'
 import { ScoreDisplay, HealthBar, GameOverScreen, ScorePopup } from './components/GameUI'
+import { PauseMenu, PauseButton } from './components/PauseMenu'
 
 // Screen shake camera component
 function ShakeCamera({ shakeIntensity }: { shakeIntensity: number }) {
@@ -166,7 +167,7 @@ const weaponInfo = {
 
 // Inner App component that uses game state
 function GameContent() {
-  const { addScore, addKill, takeDamage, isPaused, isGameOver } = useGameState()
+  const { addScore, addKill, takeDamage, isPaused, isGameOver, pauseGame } = useGameState()
   const { playShoot, playHit, playExplosion, playDamage, playUIClick, toggleMusic, isMusicPlaying } = useAudio()
   const [currentWeapon, setCurrentWeapon] = useState(1)
   const [shakeIntensity, setShakeIntensity] = useState(0)
@@ -356,6 +357,15 @@ function GameContent() {
       >
         {isMusicPlaying ? 'MUSIC: ON' : 'MUSIC: OFF'}
       </button>
+      
+      {/* Pause Button */}
+      <PauseButton onClick={() => { pauseGame(); playUIClick(); }} />
+      
+      {/* Pause Menu */}
+      <PauseMenu 
+        onResume={() => {}}
+        onRestart={() => {}}
+      />
       
       {/* Game Over Screen */}
       <GameOverScreen />
