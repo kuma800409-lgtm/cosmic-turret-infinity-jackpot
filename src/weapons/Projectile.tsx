@@ -39,30 +39,35 @@ export function Projectile({ position, direction, speed, color, onDestroy, onHit
         trailRef.current.geometry.attributes.position.needsUpdate = true
       }
       
-      // Collision detection
-      const raycaster = new THREE.Raycaster(
-        meshRef.current.position,
-        direction,
-        0,
-        0.5
-      )
+            // Collision detection - use longer ray and walk up parent chain
+            const raycaster = new THREE.Raycaster(
+              meshRef.current.position,
+              direction.clone().normalize(),
+              0,
+              2.0 // Increased range for better detection
+            )
       
-      const intersects = raycaster.intersectObjects(scene.children, true)
+            const intersects = raycaster.intersectObjects(scene.children, true)
       
-      for (const intersect of intersects) {
-        const target = intersect.object
-        if (target.userData?.type === 'enemy' && target.userData?.takeDamage) {
-          target.userData.takeDamage(25)
-          const hitPos: [number, number, number] = [
-            meshRef.current.position.x,
-            meshRef.current.position.y,
-            meshRef.current.position.z
-          ]
-          onHit?.(hitPos)
-          onDestroy()
-          return
-        }
-      }
+            for (const intersect of intersects) {
+              // Walk up the parent chain to find the enemy mesh with userData
+              let target: THREE.Object3D | null = intersect.object
+              while (target && !(target.userData?.type === 'enemy' && target.userData?.takeDamage)) {
+                target = target.parent
+              }
+        
+              if (target && target.userData?.type === 'enemy' && target.userData?.takeDamage) {
+                target.userData.takeDamage(25)
+                const hitPos: [number, number, number] = [
+                  meshRef.current.position.x,
+                  meshRef.current.position.y,
+                  meshRef.current.position.z
+                ]
+                onHit?.(hitPos)
+                onDestroy()
+                return
+              }
+            }
       
       lifetime.current += delta
       if (lifetime.current > 3) {

@@ -9,6 +9,7 @@ interface GameState {
   maxHealth: number
   isGameOver: boolean
   isPaused: boolean
+  gameVersion: number // Increments on reset to trigger component resets
 }
 
 interface GameContextType extends GameState {
@@ -28,7 +29,8 @@ const initialState: GameState = {
   health: 100,
   maxHealth: 100,
   isGameOver: false,
-  isPaused: false
+  isPaused: false,
+  gameVersion: 0
 }
 
 const GameContext = createContext<GameContextType | null>(null)
@@ -108,12 +110,15 @@ export function GameProvider({ children }: GameProviderProps) {
     })
   }, [])
   
-  const resetGame = useCallback(() => {
-    if (comboTimeoutRef.current) {
-      clearTimeout(comboTimeoutRef.current)
-    }
-    setState(initialState)
-  }, [])
+    const resetGame = useCallback(() => {
+      if (comboTimeoutRef.current) {
+        clearTimeout(comboTimeoutRef.current)
+      }
+      setState(prev => ({
+        ...initialState,
+        gameVersion: prev.gameVersion + 1 // Increment to trigger component resets
+      }))
+    }, [])
   
   const pauseGame = useCallback(() => {
     setState(prev => ({ ...prev, isPaused: true }))

@@ -5,6 +5,7 @@ import { Projectile } from '../weapons/Projectile'
 import { LancerBeam } from '../weapons/LancerBeam'
 import { GravityNovaSpawner } from '../weapons/GravityNova'
 import { ImpactParticlesSpawner } from '../effects/ImpactParticles'
+import { useGameState } from './GameState'
 
 interface PlayerTurretProps {
   position: [number, number, number]
@@ -22,9 +23,16 @@ export function PlayerTurret({ position, onWeaponChange, onScreenShake }: Player
   const rotationRef = useRef(0)
   const directionRef = useRef(new THREE.Vector3(0, 0, 1))
   const { gl } = useThree()
+  const { gameVersion } = useGameState()
   
     // Weapon state
     const [currentWeapon, setCurrentWeapon] = useState<WeaponType>(1)
+  
+  // Reset weapon to default when game restarts
+  useEffect(() => {
+    setCurrentWeapon(1)
+    onWeaponChange?.(1)
+  }, [gameVersion, onWeaponChange])
     const [isBeamActive, setIsBeamActive] = useState(false)
     const [muzzleFlash, setMuzzleFlash] = useState(false)
     const [recoil, setRecoil] = useState(0)

@@ -25,16 +25,21 @@ export function LancerBeam({ isActive, turretPosition, turretDirection }: Lancer
     beamRef.current.position.copy(beamCenter)
     beamRef.current.lookAt(beamEnd)
     
-    // Damage enemies in beam path
-    const raycaster = new THREE.Raycaster(beamStart, turretDirection, 0, beamLength)
-    const intersects = raycaster.intersectObjects(scene.children, true)
+        // Damage enemies in beam path
+        const raycaster = new THREE.Raycaster(beamStart, turretDirection.clone().normalize(), 0, beamLength)
+        const intersects = raycaster.intersectObjects(scene.children, true)
     
-    for (const intersect of intersects) {
-      const target = intersect.object
-      if (target.userData?.type === 'enemy' && target.userData?.takeDamage) {
-        target.userData.takeDamage(50 * delta) // Continuous damage
-      }
-    }
+        for (const intersect of intersects) {
+          // Walk up the parent chain to find the enemy mesh with userData
+          let target: THREE.Object3D | null = intersect.object
+          while (target && !(target.userData?.type === 'enemy' && target.userData?.takeDamage)) {
+            target = target.parent
+          }
+      
+          if (target && target.userData?.type === 'enemy' && target.userData?.takeDamage) {
+            target.userData.takeDamage(50 * delta) // Continuous damage
+          }
+        }
     
     // Update trail effect
     if (trailRef.current) {
