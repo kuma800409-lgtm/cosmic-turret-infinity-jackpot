@@ -84,10 +84,13 @@ export function PlayerTurret({ position, onWeaponChange, onScreenShake }: Player
     if (photonCooldown > 0) return
     
     const rotation = rotationRef.current
+    // Direction should point towards negative Z (where enemies are)
+    // When mouse is at top of screen, mouse.y is positive, rotation is ~0
+    // We need to negate Z so bullets go towards enemies (negative Z)
     const direction = new THREE.Vector3(
-      Math.sin(rotation),
+      -Math.sin(rotation),
       0,
-      Math.cos(rotation)
+      -Math.cos(rotation)
     ).normalize()
     
     const muzzleOffset = direction.clone().multiplyScalar(1.2)
@@ -122,10 +125,11 @@ export function PlayerTurret({ position, onWeaponChange, onScreenShake }: Player
     if (novaCooldown > 0) return
     
     const rotation = rotationRef.current
+    // Direction should point towards negative Z (where enemies are)
     const direction = new THREE.Vector3(
-      Math.sin(rotation),
+      -Math.sin(rotation),
       0,
-      Math.cos(rotation)
+      -Math.cos(rotation)
     ).normalize()
     
     const spawnDistance = 5
@@ -205,11 +209,11 @@ export function PlayerTurret({ position, onWeaponChange, onScreenShake }: Player
         turretRef.current.rotation.y = rotation
         rotationRef.current = rotation
       
-        // Update direction for beam
+        // Update direction for beam (towards negative Z where enemies are)
         directionRef.current.set(
-          Math.sin(rotation),
+          -Math.sin(rotation),
           0,
-          Math.cos(rotation)
+          -Math.cos(rotation)
         ).normalize()
       }
     
