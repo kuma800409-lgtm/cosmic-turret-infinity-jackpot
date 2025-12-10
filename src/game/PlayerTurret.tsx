@@ -23,10 +23,12 @@ export function PlayerTurret({ position, onWeaponChange, onScreenShake }: Player
   const directionRef = useRef(new THREE.Vector3(0, 0, 1))
   const { gl } = useThree()
   
-  // Weapon state
-  const [currentWeapon, setCurrentWeapon] = useState<WeaponType>(1)
-  const [isBeamActive, setIsBeamActive] = useState(false)
-  const [muzzleFlash, setMuzzleFlash] = useState(false)
+    // Weapon state
+    const [currentWeapon, setCurrentWeapon] = useState<WeaponType>(1)
+    const [isBeamActive, setIsBeamActive] = useState(false)
+    const [muzzleFlash, setMuzzleFlash] = useState(false)
+    const [recoil, setRecoil] = useState(0)
+    const [weaponTransition, setWeaponTransition] = useState(0)
   
   // Cooldowns
   const [photonCooldown, setPhotonCooldown] = useState(0)
@@ -93,12 +95,15 @@ export function PlayerTurret({ position, onWeaponChange, onScreenShake }: Player
       direction: direction
     }])
     
-    // Muzzle flash
-    setMuzzleFlash(true)
-    setTimeout(() => setMuzzleFlash(false), 50)
+        // Muzzle flash
+        setMuzzleFlash(true)
+        setTimeout(() => setMuzzleFlash(false), 50)
     
-    // Screen shake
-    onScreenShake?.()
+        // Recoil animation
+        setRecoil(0.15)
+    
+        // Screen shake
+        onScreenShake?.()
     
     // Cooldown
     setPhotonCooldown(0.1)
@@ -127,12 +132,15 @@ export function PlayerTurret({ position, onWeaponChange, onScreenShake }: Player
       position: spawnPosition
     }])
     
-    // Screen shake
-    onScreenShake?.()
+      // Recoil animation (stronger for Nova)
+      setRecoil(0.3)
     
-    // Cooldown (3 seconds)
-    setNovaCooldown(3)
-  }, [position, novaCooldown, onScreenShake])
+      // Screen shake
+      onScreenShake?.()
+    
+      // Cooldown (3 seconds)
+      setNovaCooldown(3)
+    }, [position, novaCooldown, onScreenShake])
   
   // Handle mouse events
   useEffect(() => {
@@ -163,45 +171,58 @@ export function PlayerTurret({ position, onWeaponChange, onScreenShake }: Player
   
   // Handle keyboard for weapon switching
   useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === '1') {
-        setCurrentWeapon(1)
-        onWeaponChange?.(1)
-      } else if (e.key === '2') {
-        setCurrentWeapon(2)
-        onWeaponChange?.(2)
-      } else if (e.key === '3') {
-        setCurrentWeapon(3)
-        onWeaponChange?.(3)
-      }
-    }
+        const handleKeyDown = (e: KeyboardEvent) => {
+          if (e.key === '1') {
+            setCurrentWeapon(1)
+            setWeaponTransition(1) // Trigger transition animation
+            onWeaponChange?.(1)
+          } else if (e.key === '2') {
+            setCurrentWeapon(2)
+            setWeaponTransition(1)
+            onWeaponChange?.(2)
+          } else if (e.key === '3') {
+            setCurrentWeapon(3)
+            setWeaponTransition(1)
+            onWeaponChange?.(3)
+          }
+        }
     
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [onWeaponChange])
   
-  useFrame(({ mouse }, delta) => {
-    if (turretRef.current) {
-      const rotation = Math.atan2(mouse.x, mouse.y)
-      turretRef.current.rotation.y = rotation
-      rotationRef.current = rotation
+    useFrame(({ mouse }, delta) => {
+      if (turretRef.current) {
+        const rotation = Math.atan2(mouse.x, mouse.y)
+        turretRef.current.rotation.y = rotation
+        rotationRef.current = rotation
       
-      // Update direction for beam
-      directionRef.current.set(
-        Math.sin(rotation),
-        0,
-        Math.cos(rotation)
-      ).normalize()
-    }
+        // Update direction for beam
+        directionRef.current.set(
+          Math.sin(rotation),
+          0,
+          Math.cos(rotation)
+        ).normalize()
+      }
     
-    // Update cooldowns
-    if (photonCooldown > 0) {
-      setPhotonCooldown(prev => Math.max(0, prev - delta))
-    }
-    if (novaCooldown > 0) {
-      setNovaCooldown(prev => Math.max(0, prev - delta))
-    }
-  })
+      // Update cooldowns
+      if (photonCooldown > 0) {
+        setPhotonCooldown(prev => Math.max(0, prev - delta))
+      }
+      if (novaCooldown > 0) {
+        setNovaCooldown(prev => Math.max(0, prev - delta))
+      }
+    
+      // Animate recoil recovery
+      if (recoil > 0) {
+        setRecoil(prev => Math.max(0, prev - delta * 3))
+      }
+    
+      // Animate weapon transition
+      if (weaponTransition > 0) {
+        setWeaponTransition(prev => Math.max(0, prev - delta * 4))
+      }
+    })
   
   // Get barrel color based on weapon
   const getBarrelColor = () => {
@@ -222,17 +243,21 @@ export function PlayerTurret({ position, onWeaponChange, onScreenShake }: Player
           <meshStandardMaterial color="#2a9d8f" metalness={0.8} roughness={0.2} />
         </mesh>
         
-        {/* Barrel */}
-        <mesh position={[0, 0.3, 0.5]} rotation={[-Math.PI / 2, 0, 0]}>
-          <cylinderGeometry args={[0.1, 0.15, 1, 8]} />
-          <meshStandardMaterial 
-            color={getBarrelColor()} 
-            emissive={getBarrelColor()} 
-            emissiveIntensity={muzzleFlash ? 3 : 0.5}
-            metalness={0.9} 
-            roughness={0.1} 
-          />
-        </mesh>
+                {/* Barrel with recoil animation */}
+                <mesh 
+                  position={[0, 0.3, 0.5 - recoil]} 
+                  rotation={[-Math.PI / 2, 0, 0]}
+                  scale={[1 + weaponTransition * 0.2, 1, 1 + weaponTransition * 0.2]}
+                >
+                  <cylinderGeometry args={[0.1, 0.15, 1, 8]} />
+                  <meshStandardMaterial 
+                    color={getBarrelColor()} 
+                    emissive={getBarrelColor()} 
+                    emissiveIntensity={muzzleFlash ? 3 : (0.5 + weaponTransition * 2)}
+                    metalness={0.9} 
+                    roughness={0.1} 
+                  />
+                </mesh>
         
         {/* Muzzle glow point - intensity increases to 5 when firing */}
         <pointLight 

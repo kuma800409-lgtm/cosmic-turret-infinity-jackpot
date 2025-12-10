@@ -16,30 +16,41 @@ export function Enemy({ position, onDestroy, onDamage, onReachTurret }: EnemyPro
   const [isDying, setIsDying] = useState(false)
   const deathTimeRef = useRef(0)
   
-  useFrame((_, delta) => {
-    if (!meshRef.current) return
+    useFrame((state, delta) => {
+      if (!meshRef.current) return
     
-    // Death animation
-    if (isDying) {
-      deathTimeRef.current += delta
-      const scale = Math.max(0, 1 - deathTimeRef.current * 3)
-      meshRef.current.scale.setScalar(scale)
-      if (deathTimeRef.current > 0.3) {
-        onDestroy(true, meshRef.current.position.clone())
+      // Death animation
+      if (isDying) {
+        deathTimeRef.current += delta
+        const scale = Math.max(0, 1 - deathTimeRef.current * 3)
+        meshRef.current.scale.setScalar(scale)
+        // Spin faster when dying
+        meshRef.current.rotation.y += delta * 15
+        meshRef.current.rotation.x += delta * 10
+        if (deathTimeRef.current > 0.3) {
+          onDestroy(true, meshRef.current.position.clone())
+        }
+        return
       }
-      return
-    }
     
-    if (health > 0) {
-      meshRef.current.position.z += delta * 0.5
+      if (health > 0) {
+        meshRef.current.position.z += delta * 0.5
       
-      // Enemy reached turret - deal damage
-      if (meshRef.current.position.z > 1.5) {
-        onReachTurret?.()
-        onDestroy(false, meshRef.current.position.clone())
+        // Rotation animation - enemies spin as they approach
+        meshRef.current.rotation.y += delta * 2
+        meshRef.current.rotation.x += delta * 0.5
+      
+        // Pulsing scale effect
+        const pulse = 1 + Math.sin(state.clock.elapsedTime * 5) * 0.05
+        meshRef.current.scale.setScalar(pulse)
+      
+        // Enemy reached turret - deal damage
+        if (meshRef.current.position.z > 1.5) {
+          onReachTurret?.()
+          onDestroy(false, meshRef.current.position.clone())
+        }
       }
-    }
-  })
+    })
   
   const takeDamage = (damage: number) => {
     if (isDying) return

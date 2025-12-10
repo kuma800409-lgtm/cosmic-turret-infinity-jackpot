@@ -9,6 +9,8 @@ import { GameProvider, useGameState } from './game/GameState'
 import { AudioProvider, useAudio } from './audio/AudioManager'
 import { ScoreDisplay, HealthBar, GameOverScreen, ScorePopup } from './components/GameUI'
 import { PauseMenu, PauseButton } from './components/PauseMenu'
+import { JackpotDisplay, CoinSpawner, useJackpotSystem } from './game/JackpotSystem'
+import { Starfield } from './effects/Starfield'
 
 // Screen shake camera component
 function ShakeCamera({ shakeIntensity }: { shakeIntensity: number }) {
@@ -107,6 +109,8 @@ interface SceneProps {
   onExplosionComplete: (id: number) => void
   isPaused: boolean
   isGameOver: boolean
+  coinEntities: Array<{ id: number; position: THREE.Vector3 }>
+  onCoinCollect: (id: number) => void
 }
 
 function Scene({ 
@@ -119,10 +123,15 @@ function Scene({
   explosions,
   onExplosionComplete,
   isPaused,
-  isGameOver
+  isGameOver,
+  coinEntities,
+  onCoinCollect
 }: SceneProps) {
   return (
     <>
+      {/* Starfield background */}
+      <Starfield count={500} depth={50} speed={0.5} />
+      
       <ambientLight intensity={0.3} />
       <directionalLight position={[5, 5, 5]} intensity={1} />
       <PlayerTurret 
@@ -144,6 +153,7 @@ function Scene({
           onComplete={() => onExplosionComplete(exp.id)}
         />
       ))}
+      <CoinSpawner coins={coinEntities} onCoinCollect={onCoinCollect} />
       <ShakeCamera shakeIntensity={shakeIntensity} />
       <OrbitControls />
       <EffectComposer>
@@ -169,6 +179,7 @@ const weaponInfo = {
 function GameContent() {
   const { addScore, addKill, takeDamage, isPaused, isGameOver, pauseGame } = useGameState()
   const { playShoot, playHit, playExplosion, playDamage, playUIClick, toggleMusic, isMusicPlaying } = useAudio()
+  const { coins, jackpotLevel, isJackpotActive, coinEntities, spawnCoin, collectCoin } = useJackpotSystem()
   const [currentWeapon, setCurrentWeapon] = useState(1)
   const [shakeIntensity, setShakeIntensity] = useState(0)
   const [explosions, setExplosions] = useState<Array<{ id: number; position: THREE.Vector3 }>>([])
@@ -187,17 +198,21 @@ function GameContent() {
   
   const handleEnemyKilled = useCallback((position: THREE.Vector3) => {
     addKill()
-    addScore(100, currentWeapon)
+    // Jackpot bonus: 2x score when active
+    const baseScore = isJackpotActive ? 200 : 100
+    addScore(baseScore, currentWeapon)
     setExplosions(prev => [...prev, { id: Date.now(), position }])
     setShakeIntensity(2)
     setTimeout(() => setShakeIntensity(0), 150)
     setScorePopups(prev => [...prev, {
       id: Date.now(),
-      score: 100,
+      score: baseScore,
       position: { x: window.innerWidth / 2, y: window.innerHeight / 2 - 100 }
     }])
     playExplosion()
-  }, [addKill, addScore, currentWeapon, playExplosion])
+    // Spawn coin at enemy death position
+    spawnCoin(position)
+  }, [addKill, addScore, currentWeapon, playExplosion, isJackpotActive, spawnCoin])
   
   const handleEnemyDamaged = useCallback((_damage: number, _position: THREE.Vector3) => {
     playHit()
@@ -230,18 +245,20 @@ function GameContent() {
           far: 1000
         }}
       >
-        <Scene 
-          onWeaponChange={handleWeaponChange}
-          onScreenShake={handleScreenShake}
-          shakeIntensity={shakeIntensity}
-          onEnemyKilled={handleEnemyKilled}
-          onEnemyDamaged={handleEnemyDamaged}
-          onEnemyReachTurret={handleEnemyReachTurret}
-          explosions={explosions}
-          onExplosionComplete={handleExplosionComplete}
-          isPaused={isPaused}
-          isGameOver={isGameOver}
-        />
+                <Scene 
+                  onWeaponChange={handleWeaponChange}
+                  onScreenShake={handleScreenShake}
+                  shakeIntensity={shakeIntensity}
+                  onEnemyKilled={handleEnemyKilled}
+                  onEnemyDamaged={handleEnemyDamaged}
+                  onEnemyReachTurret={handleEnemyReachTurret}
+                  explosions={explosions}
+                  onExplosionComplete={handleExplosionComplete}
+                  isPaused={isPaused}
+                  isGameOver={isGameOver}
+                  coinEntities={coinEntities}
+                  onCoinCollect={collectCoin}
+                />
       </Canvas>
       
       {/* Game Title */}
@@ -260,8 +277,15 @@ function GameContent() {
       {/* Score Display */}
       <ScoreDisplay />
       
-      {/* Health Bar */}
-      <HealthBar />
+            {/* Health Bar */}
+            <HealthBar />
+      
+            {/* Jackpot Display */}
+            <JackpotDisplay 
+              coins={coins}
+              jackpotLevel={jackpotLevel}
+              isJackpotActive={isJackpotActive}
+            />
       
       {/* Score Popups */}
       {scorePopups.map(popup => (
