@@ -8,9 +8,10 @@ interface ProjectileProps {
   speed: number
   color: string
   onDestroy: () => void
+  onHit?: (position: [number, number, number]) => void
 }
 
-export function Projectile({ position, direction, speed, color, onDestroy }: ProjectileProps) {
+export function Projectile({ position, direction, speed, color, onDestroy, onHit }: ProjectileProps) {
   const meshRef = useRef<THREE.Mesh>(null)
   const lifetime = useRef(0)
   const { scene } = useThree()
@@ -34,6 +35,13 @@ export function Projectile({ position, direction, speed, color, onDestroy }: Pro
         const target = intersect.object
         if (target.userData?.type === 'enemy' && target.userData?.takeDamage) {
           target.userData.takeDamage(25)
+          // Trigger impact particles at hit position
+          const hitPos: [number, number, number] = [
+            meshRef.current.position.x,
+            meshRef.current.position.y,
+            meshRef.current.position.z
+          ]
+          onHit?.(hitPos)
           onDestroy()
           return
         }

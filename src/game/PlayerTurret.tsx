@@ -4,6 +4,7 @@ import * as THREE from 'three'
 import { Projectile } from '../weapons/Projectile'
 import { LancerBeam } from '../weapons/LancerBeam'
 import { GravityNovaSpawner } from '../weapons/GravityNova'
+import { ImpactParticlesSpawner } from '../effects/ImpactParticles'
 
 interface PlayerTurretProps {
   position: [number, number, number]
@@ -42,12 +43,30 @@ export function PlayerTurret({ position, onWeaponChange, onScreenShake }: Player
     position: [number, number, number]
   }>>([])
   
+  const [impacts, setImpacts] = useState<Array<{
+    id: number
+    position: [number, number, number]
+    color: string
+  }>>([])
+  
   const removeProjectile = useCallback((id: number) => {
     setProjectiles(prev => prev.filter(p => p.id !== id))
   }, [])
   
   const removeNova = useCallback((id: number) => {
     setNovas(prev => prev.filter(n => n.id !== id))
+  }, [])
+  
+  const removeImpact = useCallback((id: number) => {
+    setImpacts(prev => prev.filter(i => i.id !== id))
+  }, [])
+  
+  const addImpact = useCallback((position: [number, number, number], color: string) => {
+    setImpacts(prev => [...prev, {
+      id: Date.now() + Math.random(),
+      position,
+      color
+    }])
   }, [])
   
   // Photon Repeater shoot
@@ -215,12 +234,12 @@ export function PlayerTurret({ position, onWeaponChange, onScreenShake }: Player
           />
         </mesh>
         
-        {/* Muzzle glow point */}
+        {/* Muzzle glow point - intensity increases to 5 when firing */}
         <pointLight 
           position={[0, 0.3, 1]} 
           color={getBarrelColor()} 
-          intensity={muzzleFlash ? 10 : 2} 
-          distance={muzzleFlash ? 5 : 3} 
+          intensity={muzzleFlash ? 5 : 1} 
+          distance={muzzleFlash ? 4 : 2} 
         />
       </group>
       
@@ -233,6 +252,7 @@ export function PlayerTurret({ position, onWeaponChange, onScreenShake }: Player
           speed={20}
           color="#00ffff"
           onDestroy={() => removeProjectile(proj.id)}
+          onHit={(hitPos) => addImpact(hitPos, '#00ffff')}
         />
       ))}
       
@@ -247,6 +267,12 @@ export function PlayerTurret({ position, onWeaponChange, onScreenShake }: Player
       <GravityNovaSpawner
         novas={novas}
         onNovaComplete={removeNova}
+      />
+      
+      {/* Impact Particles */}
+      <ImpactParticlesSpawner
+        impacts={impacts}
+        onImpactComplete={removeImpact}
       />
     </>
   )
