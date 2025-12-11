@@ -6,6 +6,8 @@ interface AudioContextType {
   playExplosion: () => void
   playDamage: () => void
   playUIClick: () => void
+  startBeamSound: () => void
+  stopBeamSound: () => void
   setMusicVolume: (volume: number) => void
   setSFXVolume: (volume: number) => void
   toggleMusic: () => void
@@ -31,6 +33,8 @@ export function AudioProvider({ children }: AudioProviderProps) {
   const musicGainRef = useRef<GainNode | null>(null)
   const sfxGainRef = useRef<GainNode | null>(null)
   const musicOscillatorRef = useRef<OscillatorNode | null>(null)
+  const beamOscillatorRef = useRef<OscillatorNode | null>(null)
+  const beamGainRef = useRef<GainNode | null>(null)
   const [isMusicPlaying, setIsMusicPlaying] = useState(false)
   
   const getAudioContext = useCallback(() => {
@@ -169,28 +173,72 @@ export function AudioProvider({ children }: AudioProviderProps) {
     oscillator.stop(now + 0.2)
   }, [getAudioContext])
   
-  const playUIClick = useCallback(() => {
-    const ctx = getAudioContext()
-    if (!sfxGainRef.current) return
+    const playUIClick = useCallback(() => {
+      const ctx = getAudioContext()
+      if (!sfxGainRef.current) return
     
-    const oscillator = ctx.createOscillator()
-    const gainNode = ctx.createGain()
+      const oscillator = ctx.createOscillator()
+      const gainNode = ctx.createGain()
     
-    oscillator.connect(gainNode)
-    gainNode.connect(sfxGainRef.current)
+      oscillator.connect(gainNode)
+      gainNode.connect(sfxGainRef.current)
     
-    const now = ctx.currentTime
-    oscillator.type = 'sine'
-    oscillator.frequency.setValueAtTime(600, now)
-    oscillator.frequency.setValueAtTime(800, now + 0.02)
-    gainNode.gain.setValueAtTime(0.1, now)
-    gainNode.gain.exponentialRampToValueAtTime(0.01, now + 0.05)
+      const now = ctx.currentTime
+      oscillator.type = 'sine'
+      oscillator.frequency.setValueAtTime(600, now)
+      oscillator.frequency.setValueAtTime(800, now + 0.02)
+      gainNode.gain.setValueAtTime(0.1, now)
+      gainNode.gain.exponentialRampToValueAtTime(0.01, now + 0.05)
     
-    oscillator.start(now)
-    oscillator.stop(now + 0.05)
-  }, [getAudioContext])
+      oscillator.start(now)
+      oscillator.stop(now + 0.05)
+    }, [getAudioContext])
   
-  const startMusic = useCallback(() => {
+    const startBeamSound = useCallback(() => {
+      const ctx = getAudioContext()
+      if (!sfxGainRef.current || beamOscillatorRef.current) return
+    
+      // Create continuous "bzzzz" sound for beam
+      const osc1 = ctx.createOscillator()
+      const osc2 = ctx.createOscillator()
+      const gainNode = ctx.createGain()
+    
+      osc1.type = 'sawtooth'
+      osc1.frequency.value = 150
+    
+      osc2.type = 'square'
+      osc2.frequency.value = 155 // Slight detuning for richer sound
+    
+      // LFO for wobble effect
+      const lfo = ctx.createOscillator()
+      const lfoGain = ctx.createGain()
+      lfo.frequency.value = 8
+      lfoGain.gain.value = 20
+      lfo.connect(lfoGain)
+      lfoGain.connect(osc1.frequency)
+    
+      osc1.connect(gainNode)
+      osc2.connect(gainNode)
+      gainNode.gain.value = 0.12
+      gainNode.connect(sfxGainRef.current)
+    
+      lfo.start()
+      osc1.start()
+      osc2.start()
+    
+      beamOscillatorRef.current = osc1
+      beamGainRef.current = gainNode
+    }, [getAudioContext])
+  
+    const stopBeamSound = useCallback(() => {
+      if (beamOscillatorRef.current) {
+        beamOscillatorRef.current.stop()
+        beamOscillatorRef.current = null
+        beamGainRef.current = null
+      }
+    }, [])
+  
+    const startMusic = useCallback(() => {
     const ctx = getAudioContext()
     if (!musicGainRef.current || musicOscillatorRef.current) return
     
@@ -280,17 +328,19 @@ export function AudioProvider({ children }: AudioProviderProps) {
     }
   }, [isMusicPlaying, startMusic])
   
-  const value: AudioContextType = {
-    playShoot,
-    playHit,
-    playExplosion,
-    playDamage,
-    playUIClick,
-    setMusicVolume,
-    setSFXVolume,
-    toggleMusic,
-    isMusicPlaying
-  }
+    const value: AudioContextType = {
+      playShoot,
+      playHit,
+      playExplosion,
+      playDamage,
+      playUIClick,
+      startBeamSound,
+      stopBeamSound,
+      setMusicVolume,
+      setSFXVolume,
+      toggleMusic,
+      isMusicPlaying
+    }
   
   return (
     <AudioContext.Provider value={value}>

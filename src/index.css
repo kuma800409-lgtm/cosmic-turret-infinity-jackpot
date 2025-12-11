@@ -52,3 +52,14 @@ body {
   25% { transform: translateX(-5px); }
   75% { transform: translateX(5px); }
 }
+
+@keyframes fadeIn {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.9);
+  }
+  100% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+}

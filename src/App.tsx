@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from 'react'
+import { useState, useCallback, useRef, useEffect } from 'react'
 import { Canvas, useFrame } from '@react-three/fiber'
 import { OrbitControls } from '@react-three/drei'
 import { EffectComposer, Bloom } from '@react-three/postprocessing'
@@ -175,15 +175,106 @@ const weaponInfo = {
   3: { name: 'Gravity Nova', color: '#aa00ff', description: 'AOE explosion' }
 }
 
+// Game Tutorial Component
+function GameTutorial({ onDismiss }: { onDismiss: () => void }) {
+  const [visible, setVisible] = useState(true)
+  
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setVisible(false)
+      onDismiss()
+    }, 5000) // Auto-dismiss after 5 seconds
+    
+    return () => clearTimeout(timer)
+  }, [onDismiss])
+  
+  const handleClick = () => {
+    setVisible(false)
+    onDismiss()
+  }
+  
+  if (!visible) return null
+  
+  return (
+    <div
+      onClick={handleClick}
+      style={{
+        position: 'absolute',
+        top: '50%',
+        left: '50%',
+        transform: 'translate(-50%, -50%)',
+        background: 'rgba(0, 20, 40, 0.95)',
+        border: '2px solid #00ffff',
+        borderRadius: '10px',
+        padding: '30px 40px',
+        fontFamily: 'monospace',
+        color: '#00ffff',
+        textAlign: 'center',
+        zIndex: 800,
+        boxShadow: '0 0 30px rgba(0, 255, 255, 0.3)',
+        cursor: 'pointer',
+        animation: 'fadeIn 0.3s ease-out'
+      }}
+    >
+      <div style={{ fontSize: '24px', fontWeight: 'bold', marginBottom: '20px', textShadow: '0 0 10px #00ffff' }}>
+        HOW TO PLAY
+      </div>
+      <div style={{ fontSize: '16px', lineHeight: '2', textAlign: 'left' }}>
+        <div><span style={{ color: '#ffff00' }}>Mouse:</span> Aim and Fire</div>
+        <div><span style={{ color: '#ffff00' }}>1/2/3:</span> Switch Weapons</div>
+        <div><span style={{ color: '#ffff00' }}>ESC:</span> Pause Game</div>
+      </div>
+      <div style={{ marginTop: '20px', fontSize: '14px', color: '#ff8800' }}>
+        Destroy enemies before they reach the turret!
+      </div>
+      <div style={{ marginTop: '15px', fontSize: '12px', opacity: 0.6 }}>
+        Click anywhere to dismiss
+      </div>
+    </div>
+  )
+}
+
 // Inner App component that uses game state
 function GameContent() {
   const { addScore, addKill, takeDamage, isPaused, isGameOver, pauseGame } = useGameState()
-  const { playShoot, playHit, playExplosion, playDamage, playUIClick, toggleMusic, isMusicPlaying } = useAudio()
+  const { playShoot, playHit, playExplosion, playDamage, playUIClick, startBeamSound, stopBeamSound, toggleMusic, isMusicPlaying } = useAudio()
   const { coins, jackpotLevel, isJackpotActive, coinEntities, spawnCoin, collectCoin } = useJackpotSystem()
   const [currentWeapon, setCurrentWeapon] = useState(1)
   const [shakeIntensity, setShakeIntensity] = useState(0)
   const [explosions, setExplosions] = useState<Array<{ id: number; position: THREE.Vector3 }>>([])
   const [scorePopups, setScorePopups] = useState<Array<{ id: number; score: number; position: { x: number; y: number } }>>([])
+  const [showTutorial, setShowTutorial] = useState(true)
+  const [isBeamFiring, setIsBeamFiring] = useState(false)
+  
+  // Handle beam sound based on weapon and firing state
+  useEffect(() => {
+    if (currentWeapon === 2 && isBeamFiring) {
+      startBeamSound()
+    } else {
+      stopBeamSound()
+    }
+    return () => stopBeamSound()
+  }, [currentWeapon, isBeamFiring, startBeamSound, stopBeamSound])
+  
+  // Track mouse state for beam weapon
+  useEffect(() => {
+    const handleMouseDown = () => {
+      if (currentWeapon === 2) {
+        setIsBeamFiring(true)
+      }
+    }
+    const handleMouseUp = () => {
+      setIsBeamFiring(false)
+    }
+    
+    window.addEventListener('mousedown', handleMouseDown)
+    window.addEventListener('mouseup', handleMouseUp)
+    
+    return () => {
+      window.removeEventListener('mousedown', handleMouseDown)
+      window.removeEventListener('mouseup', handleMouseUp)
+    }
+  }, [currentWeapon])
   
   const handleWeaponChange = useCallback((weapon: number) => {
     setCurrentWeapon(weapon)
@@ -297,52 +388,57 @@ function GameContent() {
         />
       ))}
       
-      {/* Weapon UI */}
-      <div style={{
-        position: 'absolute',
-        bottom: '20px',
-        left: '50%',
-        transform: 'translateX(-50%)',
-        display: 'flex',
-        gap: '10px',
-        fontFamily: 'monospace'
-      }}>
-        {[1, 2, 3].map((num) => {
-          const w = weaponInfo[num as keyof typeof weaponInfo]
-          const isActive = currentWeapon === num
-          return (
-            <div
-              key={num}
-              onClick={() => {
-                setCurrentWeapon(num)
-                window.dispatchEvent(new KeyboardEvent('keydown', { key: String(num) }))
-              }}
-              style={{
-                padding: '10px 20px',
-                background: isActive ? w.color : 'rgba(0,0,0,0.7)',
-                border: `2px solid ${w.color}`,
-                borderRadius: '5px',
-                color: isActive ? '#000' : w.color,
-                textAlign: 'center',
-                boxShadow: isActive ? `0 0 20px ${w.color}` : 'none',
-                transition: 'all 0.2s ease',
-                cursor: 'pointer'
-              }}
-              onMouseEnter={(e) => {
-                if (!isActive) {
-                  e.currentTarget.style.transform = 'scale(1.05)'
-                }
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.transform = 'scale(1)'
-              }}
-            >
-              <div style={{ fontSize: '20px', fontWeight: 'bold' }}>{num}</div>
-              <div style={{ fontSize: '12px' }}>{w.name}</div>
+            {/* Weapon UI */}
+            <div style={{
+              position: 'absolute',
+              bottom: '20px',
+              left: '50%',
+              transform: 'translateX(-50%)',
+              display: 'flex',
+              gap: '10px',
+              fontFamily: 'monospace'
+            }}>
+              {[1, 2, 3].map((num) => {
+                const w = weaponInfo[num as keyof typeof weaponInfo]
+                const isActive = currentWeapon === num
+                return (
+                  <div
+                    key={num}
+                    onClick={() => {
+                      setCurrentWeapon(num)
+                      playUIClick()
+                      window.dispatchEvent(new KeyboardEvent('keydown', { key: String(num) }))
+                    }}
+                    style={{
+                      padding: '10px 20px',
+                      background: isActive ? w.color : 'rgba(0,0,0,0.7)',
+                      border: `2px solid ${w.color}`,
+                      borderRadius: '5px',
+                      color: isActive ? '#000' : w.color,
+                      textAlign: 'center',
+                      boxShadow: isActive ? `0 0 20px ${w.color}` : `0 0 5px ${w.color}44`,
+                      transition: 'all 0.2s ease',
+                      cursor: 'pointer'
+                    }}
+                    onMouseEnter={(e) => {
+                      if (!isActive) {
+                        e.currentTarget.style.transform = 'scale(1.08)'
+                        e.currentTarget.style.boxShadow = `0 0 15px ${w.color}88`
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.transform = 'scale(1)'
+                      if (!isActive) {
+                        e.currentTarget.style.boxShadow = `0 0 5px ${w.color}44`
+                      }
+                    }}
+                  >
+                    <div style={{ fontSize: '20px', fontWeight: 'bold' }}>{num}</div>
+                    <div style={{ fontSize: '12px' }}>{w.name}</div>
+                  </div>
+                )
+              })}
             </div>
-          )
-        })}
-      </div>
       
       {/* Current Weapon Info */}
       <div style={{
@@ -393,6 +489,11 @@ function GameContent() {
       
       {/* Game Over Screen */}
       <GameOverScreen />
+      
+      {/* Game Tutorial - shows on first load */}
+      {showTutorial && !isGameOver && !isPaused && (
+        <GameTutorial onDismiss={() => setShowTutorial(false)} />
+      )}
     </div>
   )
 }

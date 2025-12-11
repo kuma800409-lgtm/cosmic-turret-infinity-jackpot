@@ -1,4 +1,4 @@
-import { useRef } from 'react'
+import { useRef, useState, useEffect } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
 import * as THREE from 'three'
 
@@ -6,15 +6,45 @@ interface LancerBeamProps {
   isActive: boolean
   turretPosition: THREE.Vector3
   turretDirection: THREE.Vector3
+  onHit?: () => void
 }
 
-export function LancerBeam({ isActive, turretPosition, turretDirection }: LancerBeamProps) {
+export function LancerBeam({ isActive, turretPosition, turretDirection, onHit }: LancerBeamProps) {
   const beamRef = useRef<THREE.Mesh>(null)
+  const glowRef = useRef<THREE.Mesh>(null)
   const trailRef = useRef<THREE.Points>(null)
   const { scene } = useThree()
   
+  // Charge-up state for visual effect
+  const [chargeLevel, setChargeLevel] = useState(0)
+  const chargeTimeRef = useRef(0)
+  const pulseRef = useRef(0)
+  
+  // Reset charge when beam deactivates
+  useEffect(() => {
+    if (!isActive) {
+      setChargeLevel(0)
+      chargeTimeRef.current = 0
+    }
+  }, [isActive])
+  
   useFrame((_, delta) => {
-    if (!isActive || !beamRef.current) return
+    // Handle charge-up animation (0.2 seconds to full power)
+    if (isActive) {
+      chargeTimeRef.current += delta
+      const newCharge = Math.min(1, chargeTimeRef.current / 0.2)
+      setChargeLevel(newCharge)
+      
+      // Pulsing effect when fully charged
+      pulseRef.current += delta * 10
+    }
+    
+    if (!isActive || !beamRef.current || !glowRef.current) return
+    
+    // Calculate beam dimensions based on charge level
+    const baseWidth = 0.03 + chargeLevel * 0.04 // 0.03 to 0.07
+    const glowWidth = 0.08 + chargeLevel * 0.08 // 0.08 to 0.16
+    const pulseScale = 1 + Math.sin(pulseRef.current) * 0.1 * chargeLevel
     
     // Update beam position and rotation
     const beamLength = 15
@@ -24,6 +54,11 @@ export function LancerBeam({ isActive, turretPosition, turretDirection }: Lancer
     
     beamRef.current.position.copy(beamCenter)
     beamRef.current.lookAt(beamEnd)
+    beamRef.current.scale.set(baseWidth * pulseScale * 20, 1, baseWidth * pulseScale * 20)
+    
+    glowRef.current.position.copy(beamCenter)
+    glowRef.current.lookAt(beamEnd)
+    glowRef.current.scale.set(glowWidth * pulseScale * 10, 1, glowWidth * pulseScale * 10)
     
     // Distance-based collision detection for beam
     // Check all enemies and see if they're close to the beam line
@@ -44,7 +79,8 @@ export function LancerBeam({ isActive, turretPosition, turretDirection }: Lancer
           const distToBeam = enemyPos.distanceTo(closestPoint)
           
           if (distToBeam < 0.8) { // Hit radius
-            obj.userData.takeDamage(50 * delta) // Continuous damage
+            obj.userData.takeDamage(50 * delta * chargeLevel) // Continuous damage scaled by charge
+            onHit?.()
           }
         }
       }
@@ -70,30 +106,34 @@ export function LancerBeam({ isActive, turretPosition, turretDirection }: Lancer
   // Create trail positions
   const trailPoints = new Float32Array(30 * 3) // 30 trail points
   
+  // Calculate visual properties based on charge
+  const beamOpacity = 0.4 + chargeLevel * 0.5
+  const emissiveIntensity = 1 + chargeLevel * 3
+  
   return (
     <group>
-      {/* Main beam */}
+      {/* Main beam - starts thin, grows thicker */}
       <mesh ref={beamRef}>
         <cylinderGeometry args={[0.03, 0.05, 15, 8]} />
         <meshStandardMaterial
           color="#ff0000"
           emissive="#ff0000"
-          emissiveIntensity={3}
+          emissiveIntensity={emissiveIntensity}
           transparent
-          opacity={0.8}
+          opacity={beamOpacity}
           toneMapped={false}
         />
       </mesh>
       
-      {/* Beam glow */}
-      <mesh ref={beamRef}>
+      {/* Beam glow - pulsing effect */}
+      <mesh ref={glowRef}>
         <cylinderGeometry args={[0.08, 0.12, 15, 8]} />
         <meshStandardMaterial
           color="#ff4444"
           emissive="#ff0000"
-          emissiveIntensity={1}
+          emissiveIntensity={1 + chargeLevel}
           transparent
-          opacity={0.3}
+          opacity={0.2 + chargeLevel * 0.2}
           toneMapped={false}
         />
       </mesh>
@@ -110,19 +150,19 @@ export function LancerBeam({ isActive, turretPosition, turretDirection }: Lancer
         </bufferGeometry>
         <pointsMaterial
           color="#ff0000"
-          size={0.1}
+          size={0.1 + chargeLevel * 0.05}
           transparent
-          opacity={0.5}
+          opacity={0.3 + chargeLevel * 0.4}
           sizeAttenuation
         />
       </points>
       
-      {/* Beam light */}
+      {/* Beam light - intensity increases with charge */}
       <pointLight
         position={turretPosition.toArray()}
         color="#ff0000"
-        intensity={isActive ? 5 : 0}
-        distance={5}
+        intensity={3 + chargeLevel * 4}
+        distance={4 + chargeLevel * 2}
       />
     </group>
   )

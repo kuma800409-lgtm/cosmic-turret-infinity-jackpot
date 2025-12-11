@@ -103,53 +103,66 @@ export function Projectile({ position, direction, speed, color, onDestroy, onHit
     }
   })
   
-  return (
-    <group>
-      {/* Main projectile - larger and brighter */}
-      <mesh ref={meshRef} position={position}>
-        <sphereGeometry args={[0.12, 12, 12]} />
-        <meshStandardMaterial 
-          color={color}
-          emissive={color}
-          emissiveIntensity={4}
-          toneMapped={false}
-        />
-      </mesh>
-      
-      {/* Outer glow */}
-      <mesh position={position}>
-        <sphereGeometry args={[0.2, 8, 8]} />
-        <meshStandardMaterial 
-          color={color}
-          emissive={color}
-          emissiveIntensity={2}
-          transparent
-          opacity={0.4}
-          toneMapped={false}
-        />
-      </mesh>
-      
-      {/* Trail particles */}
-      <points ref={trailRef}>
-        <bufferGeometry>
-          <bufferAttribute
-            attach="attributes-position"
-            count={15}
-            array={trailPositions.current}
-            itemSize={3}
+    return (
+      <group>
+        {/* Main projectile core - bright center */}
+        <mesh ref={meshRef} position={position}>
+          <sphereGeometry args={[0.15, 16, 16]} />
+          <meshStandardMaterial 
+            color="#ffffff"
+            emissive={color}
+            emissiveIntensity={5}
+            toneMapped={false}
           />
-        </bufferGeometry>
-        <pointsMaterial
-          color={color}
-          size={0.08}
-          transparent
-          opacity={0.6}
-          sizeAttenuation
-        />
-      </points>
+        </mesh>
       
-      {/* Point light for glow effect */}
-      <pointLight color={color} intensity={3} distance={3} />
-    </group>
-  )
+        {/* Inner glow layer */}
+        <mesh position={position}>
+          <sphereGeometry args={[0.22, 12, 12]} />
+          <meshStandardMaterial 
+            color={color}
+            emissive={color}
+            emissiveIntensity={4}
+            transparent
+            opacity={0.7}
+            toneMapped={false}
+          />
+        </mesh>
+      
+        {/* Outer glow - larger and softer */}
+        <mesh position={position}>
+          <sphereGeometry args={[0.35, 8, 8]} />
+          <meshStandardMaterial 
+            color={color}
+            emissive={color}
+            emissiveIntensity={2}
+            transparent
+            opacity={0.3}
+            toneMapped={false}
+          />
+        </mesh>
+      
+        {/* Trail particles - more particles, gradient effect */}
+        <points ref={trailRef}>
+          <bufferGeometry>
+            <bufferAttribute
+              attach="attributes-position"
+              count={15}
+              array={trailPositions.current}
+              itemSize={3}
+            />
+          </bufferGeometry>
+          <pointsMaterial
+            color={color}
+            size={0.12}
+            transparent
+            opacity={0.7}
+            sizeAttenuation
+          />
+        </points>
+      
+        {/* Point light for glow effect - stronger */}
+        <pointLight color={color} intensity={5} distance={4} />
+      </group>
+    )
 }
