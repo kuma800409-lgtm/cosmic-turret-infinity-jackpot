@@ -12,42 +12,54 @@ export function GravityNova({ position, onComplete }: GravityNovaProps) {
   const [scale, setScale] = useState(0.1)
   const [opacity, setOpacity] = useState(1)
   const { scene } = useThree()
-  const damageApplied = useRef(false)
+  
+  // Time-based state for persistent nova
+  const elapsedRef = useRef(0)
+  const nextDamageTickRef = useRef(0.3) // First damage tick at 0.3s
+  const lifeTime = 3 // Nova persists for 3 seconds
   
   useFrame((_, delta) => {
     if (!sphereRef.current) return
     
-    // Expand the nova
-    const newScale = scale + delta * 8
-    setScale(newScale)
+    elapsedRef.current += delta
     
-    // Fade out
-    const newOpacity = Math.max(0, opacity - delta * 2)
+    // Scale grows over lifetime then shrinks at the end
+    const growPhase = Math.min(1, elapsedRef.current / 0.5) // Grow for first 0.5s
+    const shrinkPhase = Math.max(0, (elapsedRef.current - (lifeTime - 0.5)) / 0.5) // Shrink in last 0.5s
+    const newScale = 0.1 + growPhase * 4 - shrinkPhase * 2
+    setScale(Math.max(0.1, newScale))
+    
+    // Opacity fades at the end
+    const newOpacity = elapsedRef.current > lifeTime - 0.5 
+      ? Math.max(0, 1 - (elapsedRef.current - (lifeTime - 0.5)) * 2)
+      : 1
     setOpacity(newOpacity)
     
-    // Apply AOE damage once at peak
-    if (newScale > 2 && !damageApplied.current) {
-      damageApplied.current = true
+    // Apply continuous AOE damage every 0.5 seconds
+    if (elapsedRef.current >= nextDamageTickRef.current && elapsedRef.current < lifeTime) {
+      nextDamageTickRef.current += 0.5 // Next tick in 0.5s
+      
       const novaPosition = new THREE.Vector3(...position)
-      const radius = 5
+      const radius = 7 // Increased radius (was 5)
+      const baseDamage = 200 // Increased damage (was 100)
       
       scene.traverse((object) => {
-        if (object.userData?.type === 'enemy' && object.userData?.takeDamage) {
+        if (object.userData?.type === 'enemy' && object.userData?.takeDamage && !object.userData?.isDying) {
           const enemyPosition = new THREE.Vector3()
           object.getWorldPosition(enemyPosition)
           const distance = novaPosition.distanceTo(enemyPosition)
           
           if (distance < radius) {
             // Damage falls off with distance
-            const damage = 100 * (1 - distance / radius)
-            object.userData.takeDamage(damage)
+            const falloff = 1 - distance / radius
+            object.userData.takeDamage(baseDamage * falloff)
           }
         }
       })
     }
     
-    // Complete animation
-    if (newOpacity <= 0) {
+    // Complete animation after lifetime
+    if (elapsedRef.current >= lifeTime) {
       onComplete()
     }
     

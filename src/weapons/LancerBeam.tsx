@@ -41,31 +41,35 @@ export function LancerBeam({ isActive, turretPosition, turretDirection, onHit }:
     
     if (!isActive || !beamRef.current || !glowRef.current) return
     
-    // Calculate beam dimensions based on charge level
-    const baseWidth = 0.03 + chargeLevel * 0.04 // 0.03 to 0.07
-    const glowWidth = 0.08 + chargeLevel * 0.08 // 0.08 to 0.16
-    const pulseScale = 1 + Math.sin(pulseRef.current) * 0.1 * chargeLevel
+    // Calculate beam dimensions based on charge level - ENHANCED for better visibility
+    const baseWidth = 0.08 + chargeLevel * 0.08 // 0.08 to 0.16 (was 0.03 to 0.07)
+    const glowWidth = 0.15 + chargeLevel * 0.15 // 0.15 to 0.30 (was 0.08 to 0.16)
+    const pulseScale = 1 + Math.sin(pulseRef.current) * 0.15 * chargeLevel
     
-    // Update beam position and rotation
-    const beamLength = 15
-    const beamStart = turretPosition.clone().add(new THREE.Vector3(0, 0.3, 0))
+    // Update beam position and rotation - start from muzzle
+    const beamLength = 20 // Extended range
+    // Calculate muzzle position (barrel tip)
+    const muzzleOffset = turretDirection.clone().normalize().multiplyScalar(1.0)
+    const beamStart = turretPosition.clone()
+      .add(new THREE.Vector3(0, 0.3, 0))
+      .add(muzzleOffset)
     const beamEnd = beamStart.clone().add(turretDirection.clone().multiplyScalar(beamLength))
     const beamCenter = beamStart.clone().add(beamEnd).multiplyScalar(0.5)
     
     beamRef.current.position.copy(beamCenter)
     beamRef.current.lookAt(beamEnd)
-    beamRef.current.scale.set(baseWidth * pulseScale * 20, 1, baseWidth * pulseScale * 20)
+    beamRef.current.scale.set(baseWidth * pulseScale * 25, 1, baseWidth * pulseScale * 25)
     
     glowRef.current.position.copy(beamCenter)
     glowRef.current.lookAt(beamEnd)
-    glowRef.current.scale.set(glowWidth * pulseScale * 10, 1, glowWidth * pulseScale * 10)
+    glowRef.current.scale.set(glowWidth * pulseScale * 15, 1, glowWidth * pulseScale * 15)
     
     // Distance-based collision detection for beam
     // Check all enemies and see if they're close to the beam line
     const enemyPos = new THREE.Vector3()
     
     scene.traverse((obj) => {
-      if (obj.userData?.type === 'enemy' && obj.userData?.takeDamage) {
+      if (obj.userData?.type === 'enemy' && obj.userData?.takeDamage && !obj.userData?.isDying) {
         obj.getWorldPosition(enemyPos)
         
         // Calculate distance from enemy to beam line
@@ -78,8 +82,8 @@ export function LancerBeam({ isActive, turretPosition, turretDirection, onHit }:
           const closestPoint = beamStart.clone().add(beamDir.multiplyScalar(projLength))
           const distToBeam = enemyPos.distanceTo(closestPoint)
           
-          if (distToBeam < 0.8) { // Hit radius
-            obj.userData.takeDamage(50 * delta * chargeLevel) // Continuous damage scaled by charge
+          if (distToBeam < 1.0) { // Hit radius increased for better hit detection
+            obj.userData.takeDamage(80 * delta * chargeLevel) // Increased damage (was 50)
             onHit?.()
           }
         }
@@ -112,28 +116,28 @@ export function LancerBeam({ isActive, turretPosition, turretDirection, onHit }:
   
   return (
     <group>
-      {/* Main beam - starts thin, grows thicker */}
+      {/* Main beam - thicker and more visible */}
       <mesh ref={beamRef}>
-        <cylinderGeometry args={[0.03, 0.05, 15, 8]} />
+        <cylinderGeometry args={[0.06, 0.10, 20, 12]} />
         <meshStandardMaterial
           color="#ff0000"
           emissive="#ff0000"
-          emissiveIntensity={emissiveIntensity}
+          emissiveIntensity={emissiveIntensity * 1.5}
           transparent
           opacity={beamOpacity}
           toneMapped={false}
         />
       </mesh>
       
-      {/* Beam glow - pulsing effect */}
+      {/* Beam glow - pulsing effect, more visible */}
       <mesh ref={glowRef}>
-        <cylinderGeometry args={[0.08, 0.12, 15, 8]} />
+        <cylinderGeometry args={[0.12, 0.18, 20, 12]} />
         <meshStandardMaterial
           color="#ff4444"
           emissive="#ff0000"
-          emissiveIntensity={1 + chargeLevel}
+          emissiveIntensity={2 + chargeLevel * 2}
           transparent
-          opacity={0.2 + chargeLevel * 0.2}
+          opacity={0.3 + chargeLevel * 0.3}
           toneMapped={false}
         />
       </mesh>

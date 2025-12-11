@@ -17,10 +17,10 @@ function ShakeCamera({ shakeIntensity }: { shakeIntensity: number }) {
   useFrame(({ camera }) => {
     if (shakeIntensity > 0) {
       camera.position.x = (Math.random() - 0.5) * shakeIntensity * 0.1
-      camera.position.y = 5 + (Math.random() - 0.5) * shakeIntensity * 0.1
+      camera.position.y = 3.5 + (Math.random() - 0.5) * shakeIntensity * 0.1 // Updated to match new camera position
     } else {
       camera.position.x = 0
-      camera.position.y = 5
+      camera.position.y = 3.5 // Updated to match new camera position
     }
   })
   
@@ -331,7 +331,7 @@ function GameContent() {
       <Canvas
         camera={{
           fov: 75,
-          position: [0, 5, 10],
+          position: [0, 3.5, 7], // Closer to turret for more immersive feel (was [0, 5, 10])
           near: 0.1,
           far: 1000
         }}

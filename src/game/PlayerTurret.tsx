@@ -158,7 +158,8 @@ export function PlayerTurret({ position, onWeaponChange, onScreenShake }: Player
     const baseDir = explicitDir ?? directionRef.current
     const direction = baseDir.clone().normalize()
     
-    const spawnDistance = 5
+    // Increased spawn distance for longer range (was 5)
+    const spawnDistance = 8
     const spawnPosition: [number, number, number] = [
       position[0] + direction.x * spawnDistance,
       position[1] + 0.5,
@@ -176,8 +177,8 @@ export function PlayerTurret({ position, onWeaponChange, onScreenShake }: Player
       // Screen shake
       onScreenShake?.()
     
-      // Cooldown (3 seconds)
-      setNovaCooldown(3)
+      // Reduced cooldown for faster fire rate (was 3 seconds)
+      setNovaCooldown(2)
     }, [position, novaCooldown, onScreenShake])
   
   // Handle mouse events

@@ -37,9 +37,14 @@ export function Enemy({ position, onDestroy, onDamage, onReachTurret }: EnemyPro
       }
     
       if (health > 0) {
-        // Move the group (which holds the position)
-        // Reduced speed by 30% (was 0.5)
-        groupRef.current.position.z += delta * 0.35
+        // Move toward turret at origin using distance-based movement
+        const turretPos = new THREE.Vector3(0, 0.5, 0)
+        const currentPos = groupRef.current.position
+        const direction = turretPos.clone().sub(currentPos).normalize()
+        
+        // Move toward turret (speed reduced by 30%, was 0.5)
+        const speed = 0.35
+        currentPos.addScaledVector(direction, speed * delta)
       
         // Rotation animation - enemies spin as they approach
         meshRef.current.rotation.y += delta * 2
@@ -49,8 +54,9 @@ export function Enemy({ position, onDestroy, onDamage, onReachTurret }: EnemyPro
         const pulse = 1 + Math.sin(state.clock.elapsedTime * 5) * 0.05
         meshRef.current.scale.setScalar(pulse)
       
-        // Enemy reached turret - deal damage
-        if (groupRef.current.position.z > 1.5) {
+        // Enemy reached turret - distance-based detection
+        const distToTurret = currentPos.distanceTo(turretPos)
+        if (distToTurret < 1.5) {
           onReachTurret?.()
           onDestroy(false, groupRef.current.position.clone())
         }

@@ -26,8 +26,11 @@ export function EnemySpawner({
     if (isPaused || isGameOver) return
     
     const interval = setInterval(() => {
-      const x = (Math.random() - 0.5) * 5
-      const z = -10
+      // 360-degree spawning using polar coordinates
+      const angle = Math.random() * Math.PI * 2
+      const distance = 12 // Spawn distance from turret
+      const x = Math.cos(angle) * distance
+      const z = Math.sin(angle) * distance
       setEnemies(prev => [...prev, {
         id: Date.now(),
         position: [x, 0.5, z]
