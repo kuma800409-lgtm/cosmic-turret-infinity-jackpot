@@ -84,44 +84,18 @@ export function Projectile({ position, direction, speed, color, onDestroy, onHit
   
     return (
       <group>
-        {/* Main projectile core - bright center */}
+        {/* Main projectile - single bright sphere that moves */}
         <mesh ref={meshRef} position={position}>
-          <sphereGeometry args={[0.15, 16, 16]} />
-          <meshStandardMaterial 
-            color="#ffffff"
-            emissive={color}
-            emissiveIntensity={5}
-            toneMapped={false}
-          />
-        </mesh>
-      
-        {/* Inner glow layer */}
-        <mesh position={position}>
-          <sphereGeometry args={[0.22, 12, 12]} />
+          <sphereGeometry args={[0.3, 16, 16]} />
           <meshStandardMaterial 
             color={color}
             emissive={color}
             emissiveIntensity={4}
-            transparent
-            opacity={0.7}
             toneMapped={false}
           />
         </mesh>
       
-        {/* Outer glow - larger and softer */}
-        <mesh position={position}>
-          <sphereGeometry args={[0.35, 8, 8]} />
-          <meshStandardMaterial 
-            color={color}
-            emissive={color}
-            emissiveIntensity={2}
-            transparent
-            opacity={0.3}
-            toneMapped={false}
-          />
-        </mesh>
-      
-        {/* Trail particles - more particles, gradient effect */}
+        {/* Trail particles */}
         <points ref={trailRef}>
           <bufferGeometry>
             <bufferAttribute
@@ -133,15 +107,12 @@ export function Projectile({ position, direction, speed, color, onDestroy, onHit
           </bufferGeometry>
           <pointsMaterial
             color={color}
-            size={0.12}
+            size={0.15}
             transparent
-            opacity={0.7}
+            opacity={0.8}
             sizeAttenuation
           />
         </points>
-      
-        {/* Point light for glow effect - stronger */}
-        <pointLight color={color} intensity={5} distance={4} />
       </group>
     )
 }
