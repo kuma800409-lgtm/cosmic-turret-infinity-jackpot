@@ -32,7 +32,7 @@ export function EnemySpawner({
         id: Date.now(),
         position: [x, 0.5, z]
       }])
-    }, 2000)
+    }, 4000) // Reduced spawn rate by 50% (was 2000ms)
     
     return () => clearInterval(interval)
   }, [isPaused, isGameOver])

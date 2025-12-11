@@ -26,8 +26,8 @@ const initialState: GameState = {
   kills: 0,
   combo: 0,
   comboMultiplier: 1,
-  health: 100,
-  maxHealth: 100,
+  health: 150,    // Increased from 100 for better survivability
+  maxHealth: 150, // Increased from 100 for better survivability
   isGameOver: false,
   isPaused: false,
   gameVersion: 0

@@ -38,7 +38,8 @@ export function Enemy({ position, onDestroy, onDamage, onReachTurret }: EnemyPro
     
       if (health > 0) {
         // Move the group (which holds the position)
-        groupRef.current.position.z += delta * 0.5
+        // Reduced speed by 30% (was 0.5)
+        groupRef.current.position.z += delta * 0.35
       
         // Rotation animation - enemies spin as they approach
         meshRef.current.rotation.y += delta * 2
