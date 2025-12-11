@@ -21,9 +21,15 @@ export type WeaponType = 1 | 2 | 3
 export function PlayerTurret({ position, onWeaponChange, onScreenShake }: PlayerTurretProps) {
   const turretRef = useRef<THREE.Group>(null)
   const rotationRef = useRef(0)
-  const directionRef = useRef(new THREE.Vector3(0, 0, 1))
-  const { gl } = useThree()
+  const directionRef = useRef(new THREE.Vector3(0, 0, -1))
+  const { gl, camera } = useThree()
   const { gameVersion } = useGameState()
+  
+  // Raycaster for mouse-to-world conversion (reuse to avoid allocation every frame)
+  const raycasterRef = useRef(new THREE.Raycaster())
+  const intersectionRef = useRef(new THREE.Vector3())
+  // Target Z depth for aiming (where enemies typically are)
+  const aimZDepth = -8
   
     // Weapon state
     const [currentWeapon, setCurrentWeapon] = useState<WeaponType>(1)
@@ -83,15 +89,8 @@ export function PlayerTurret({ position, onWeaponChange, onScreenShake }: Player
   const shootPhoton = useCallback(() => {
     if (photonCooldown > 0) return
     
-    const rotation = rotationRef.current
-    // Direction should point towards negative Z (where enemies are)
-    // When mouse is at top of screen, mouse.y is positive, rotation is ~0
-    // We need to negate Z so bullets go towards enemies (negative Z)
-    const direction = new THREE.Vector3(
-      -Math.sin(rotation),
-      0,
-      -Math.cos(rotation)
-    ).normalize()
+    // Use directionRef directly for consistent aiming
+    const direction = directionRef.current.clone().normalize()
     
     const muzzleOffset = direction.clone().multiplyScalar(1.2)
     const spawnPosition: [number, number, number] = [
@@ -124,13 +123,8 @@ export function PlayerTurret({ position, onWeaponChange, onScreenShake }: Player
   const shootNova = useCallback(() => {
     if (novaCooldown > 0) return
     
-    const rotation = rotationRef.current
-    // Direction should point towards negative Z (where enemies are)
-    const direction = new THREE.Vector3(
-      -Math.sin(rotation),
-      0,
-      -Math.cos(rotation)
-    ).normalize()
+    // Use directionRef directly for consistent aiming
+    const direction = directionRef.current.clone().normalize()
     
     const spawnDistance = 5
     const spawnPosition: [number, number, number] = [
@@ -205,16 +199,41 @@ export function PlayerTurret({ position, onWeaponChange, onScreenShake }: Player
   
     useFrame(({ mouse }, delta) => {
       if (turretRef.current) {
-        const rotation = Math.atan2(mouse.x, mouse.y)
-        turretRef.current.rotation.y = rotation
-        rotationRef.current = rotation
-      
-        // Update direction for beam (towards negative Z where enemies are)
-        directionRef.current.set(
-          -Math.sin(rotation),
-          0,
-          -Math.cos(rotation)
-        ).normalize()
+        // Use raycaster to convert mouse position to world coordinates
+        const raycaster = raycasterRef.current
+        raycaster.setFromCamera(mouse, camera)
+        
+        const target = intersectionRef.current
+        const o = raycaster.ray.origin
+        const d = raycaster.ray.direction
+        
+        // Intersect with a fixed Z plane at aimZDepth (where enemies typically are)
+        // This gives us a point in the enemy zone regardless of camera angle
+        if (Math.abs(d.z) > 1e-4) {
+          const t = (aimZDepth - o.z) / d.z
+          if (t > 0) {
+            // Valid intersection in front of camera
+            target.copy(o).addScaledVector(d, t)
+            
+            // Get turret world position
+            const turretWorld = new THREE.Vector3()
+            turretRef.current.getWorldPosition(turretWorld)
+            
+            // Calculate direction from turret to mouse intersection point
+            const dx = target.x - turretWorld.x
+            const dz = target.z - turretWorld.z
+            
+            // Calculate rotation angle (angle=0 means facing negative Z)
+            const angle = Math.atan2(dx, -dz)
+            
+            turretRef.current.rotation.y = angle
+            rotationRef.current = angle
+            
+            // Update direction vector for bullets and beam
+            // Direction from turret to target point
+            directionRef.current.set(dx, 0, dz).normalize()
+          }
+        }
       }
     
       // Update cooldowns

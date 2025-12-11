@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useRef, useState, useCallback, useEffect } from 'react'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 
@@ -15,6 +15,8 @@ export function Enemy({ position, onDestroy, onDamage, onReachTurret }: EnemyPro
   const [isHit, setIsHit] = useState(false)
   const [isDying, setIsDying] = useState(false)
   const deathTimeRef = useRef(0)
+  const healthRef = useRef(100)
+  const isDyingRef = useRef(false)
   
     useFrame((state, delta) => {
       if (!meshRef.current) return
@@ -52,8 +54,8 @@ export function Enemy({ position, onDestroy, onDamage, onReachTurret }: EnemyPro
       }
     })
   
-  const takeDamage = (damage: number) => {
-    if (isDying) return
+  const takeDamage = useCallback((damage: number) => {
+    if (isDyingRef.current) return
     
     // Flash effect
     setIsHit(true)
@@ -64,14 +66,22 @@ export function Enemy({ position, onDestroy, onDamage, onReachTurret }: EnemyPro
       onDamage?.(damage, meshRef.current.position.clone())
     }
     
-    setHealth(prev => {
-      const newHealth = prev - damage
-      if (newHealth <= 0 && !isDying) {
-        setIsDying(true)
-      }
-      return newHealth
-    })
-  }
+    // Update health using ref for immediate access
+    healthRef.current -= damage
+    setHealth(healthRef.current)
+    
+    if (healthRef.current <= 0 && !isDyingRef.current) {
+      isDyingRef.current = true
+      setIsDying(true)
+    }
+  }, [onDamage])
+  
+  // Update userData when takeDamage changes
+  useEffect(() => {
+    if (meshRef.current) {
+      meshRef.current.userData = { takeDamage, type: 'enemy' }
+    }
+  }, [takeDamage])
   
   if (health <= 0 && !isDying) return null
   
@@ -79,8 +89,7 @@ export function Enemy({ position, onDestroy, onDamage, onReachTurret }: EnemyPro
     <group>
       <mesh 
         ref={meshRef} 
-        position={position} 
-        userData={{ takeDamage, type: 'enemy' }}
+        position={position}
       >
         <boxGeometry args={[0.5, 0.5, 0.5]} />
         <meshStandardMaterial 

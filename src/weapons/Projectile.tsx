@@ -21,9 +21,8 @@ export function Projectile({ position, direction, speed, color, onDestroy, onHit
   useFrame((_, delta) => {
     if (meshRef.current) {
       // Move projectile
-      meshRef.current.position.add(
-        direction.clone().multiplyScalar(speed * delta)
-      )
+      const moveVector = direction.clone().multiplyScalar(speed * delta)
+      meshRef.current.position.add(moveVector)
       
       // Update trail positions (shift old positions back)
       if (trailRef.current) {
@@ -39,48 +38,28 @@ export function Projectile({ position, direction, speed, color, onDestroy, onHit
         trailRef.current.geometry.attributes.position.needsUpdate = true
       }
       
-      // Swept collision detection - check along bullet's path
+      // Collision detection - check bullet position against enemies
       const bulletPos = new THREE.Vector3()
       meshRef.current.getWorldPosition(bulletPos)
       
-      // Calculate previous position (where bullet was before this frame's movement)
-      const moveDistance = speed * delta
-      const prevPos = bulletPos.clone().sub(direction.clone().multiplyScalar(moveDistance))
-      
       const enemyPos = new THREE.Vector3()
       let foundEnemy = false
-      const hitRadius = 0.6 // Enemy radius + bullet radius
+      const hitRadius = 1.5 // Enemy radius + bullet radius (increased for easier hits)
       
+      let enemyCount = 0
       scene.traverse((obj) => {
         if (foundEnemy) return
         if (obj.userData?.type === 'enemy' && obj.userData?.takeDamage) {
+          enemyCount++
           obj.getWorldPosition(enemyPos)
           
-          // Check if enemy is close to the line segment from prevPos to bulletPos
-          // Using point-to-line-segment distance
-          const lineDir = bulletPos.clone().sub(prevPos)
-          const lineLength = lineDir.length()
-          if (lineLength > 0) {
-            lineDir.normalize()
-            const toEnemy = enemyPos.clone().sub(prevPos)
-            const projLength = toEnemy.dot(lineDir)
-            
-            // Clamp to line segment
-            const clampedProj = Math.max(0, Math.min(lineLength, projLength))
-            const closestPoint = prevPos.clone().add(lineDir.multiplyScalar(clampedProj))
-            const dist = enemyPos.distanceTo(closestPoint)
-            
-            if (dist < hitRadius) {
-              obj.userData.takeDamage(25)
-              foundEnemy = true
-            }
-          } else {
-            // No movement, just check distance
-            const dist = bulletPos.distanceTo(enemyPos)
-            if (dist < hitRadius) {
-              obj.userData.takeDamage(25)
-              foundEnemy = true
-            }
+          // Simple distance-based collision detection
+          // Check if enemy is within hit radius of bullet
+          const dist = bulletPos.distanceTo(enemyPos)
+          
+          if (dist < hitRadius) {
+            obj.userData.takeDamage(50) // Increased damage for easier kills
+            foundEnemy = true
           }
         }
       })
