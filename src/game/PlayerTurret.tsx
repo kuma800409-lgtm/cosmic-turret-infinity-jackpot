@@ -31,6 +31,36 @@ export function PlayerTurret({ position, onWeaponChange, onScreenShake }: Player
   // Target Z depth for aiming (where enemies typically are)
   const aimZDepth = -8
   
+  // Helper function to calculate aim direction from NDC coordinates
+  const calculateAimDirection = useCallback((ndc: THREE.Vector2): THREE.Vector3 => {
+    const raycaster = raycasterRef.current
+    raycaster.setFromCamera(ndc, camera)
+    
+    const target = new THREE.Vector3()
+    const o = raycaster.ray.origin
+    const d = raycaster.ray.direction
+    
+    // Intersect with fixed Z plane at aimZDepth
+    if (Math.abs(d.z) > 1e-4) {
+      const t = (aimZDepth - o.z) / d.z
+      if (t > 0) {
+        target.copy(o).addScaledVector(d, t)
+      }
+    }
+    
+    // Get turret world position
+    const turretWorld = new THREE.Vector3()
+    if (turretRef.current) {
+      turretRef.current.getWorldPosition(turretWorld)
+    }
+    
+    // Calculate direction from turret to target
+    const dx = target.x - turretWorld.x
+    const dz = target.z - turretWorld.z
+    
+    return new THREE.Vector3(dx, 0, dz).normalize()
+  }, [camera])
+  
     // Weapon state
     const [currentWeapon, setCurrentWeapon] = useState<WeaponType>(1)
   
@@ -85,12 +115,13 @@ export function PlayerTurret({ position, onWeaponChange, onScreenShake }: Player
     }])
   }, [])
   
-  // Photon Repeater shoot
-  const shootPhoton = useCallback(() => {
+  // Photon Repeater shoot - accepts optional explicit direction
+  const shootPhoton = useCallback((explicitDir?: THREE.Vector3) => {
     if (photonCooldown > 0) return
     
-    // Use directionRef directly for consistent aiming
-    const direction = directionRef.current.clone().normalize()
+    // Use explicit direction if provided, otherwise fall back to directionRef
+    const baseDir = explicitDir ?? directionRef.current
+    const direction = baseDir.clone().normalize()
     
     const muzzleOffset = direction.clone().multiplyScalar(1.2)
     const spawnPosition: [number, number, number] = [
@@ -119,12 +150,13 @@ export function PlayerTurret({ position, onWeaponChange, onScreenShake }: Player
     setPhotonCooldown(0.1)
   }, [position, photonCooldown, onScreenShake])
   
-  // Gravity Nova shoot
-  const shootNova = useCallback(() => {
+  // Gravity Nova shoot - accepts optional explicit direction
+  const shootNova = useCallback((explicitDir?: THREE.Vector3) => {
     if (novaCooldown > 0) return
     
-    // Use directionRef directly for consistent aiming
-    const direction = directionRef.current.clone().normalize()
+    // Use explicit direction if provided, otherwise fall back to directionRef
+    const baseDir = explicitDir ?? directionRef.current
+    const direction = baseDir.clone().normalize()
     
     const spawnDistance = 5
     const spawnPosition: [number, number, number] = [
@@ -150,13 +182,32 @@ export function PlayerTurret({ position, onWeaponChange, onScreenShake }: Player
   
   // Handle mouse events
   useEffect(() => {
-    const handleMouseDown = () => {
+    const handleMouseDown = (event: MouseEvent) => {
+      // Calculate NDC coordinates from click event
+      const rect = gl.domElement.getBoundingClientRect()
+      const ndc = new THREE.Vector2(
+        ((event.clientX - rect.left) / rect.width) * 2 - 1,
+        -((event.clientY - rect.top) / rect.height) * 2 + 1
+      )
+      
+      // Calculate direction from click position
+      const direction = calculateAimDirection(ndc)
+      
+      // Update directionRef and turret rotation for visual consistency
+      directionRef.current.copy(direction)
+      if (turretRef.current) {
+        const angle = Math.atan2(direction.x, -direction.z)
+        turretRef.current.rotation.y = angle
+        rotationRef.current = angle
+      }
+      
+      // Fire weapon with calculated direction
       if (currentWeapon === 1) {
-        shootPhoton()
+        shootPhoton(direction)
       } else if (currentWeapon === 2) {
         setIsBeamActive(true)
       } else if (currentWeapon === 3) {
-        shootNova()
+        shootNova(direction)
       }
     }
     
@@ -173,7 +224,7 @@ export function PlayerTurret({ position, onWeaponChange, onScreenShake }: Player
       gl.domElement.removeEventListener('mousedown', handleMouseDown)
       gl.domElement.removeEventListener('mouseup', handleMouseUp)
     }
-  }, [gl, currentWeapon, shootPhoton, shootNova])
+  }, [gl, currentWeapon, shootPhoton, shootNova, calculateAimDirection])
   
   // Handle keyboard for weapon switching
   useEffect(() => {

@@ -58,7 +58,7 @@ export function Projectile({ position, direction, speed, color, onDestroy, onHit
           const dist = bulletPos.distanceTo(enemyPos)
           
           if (dist < hitRadius) {
-            obj.userData.takeDamage(50) // Increased damage for easier kills
+            obj.userData.takeDamage(100) // One-hit kill
             foundEnemy = true
           }
         }
