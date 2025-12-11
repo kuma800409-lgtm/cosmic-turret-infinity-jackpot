@@ -1,6 +1,6 @@
 import { useState, useCallback, useRef, useEffect } from 'react'
 import { Canvas, useFrame } from '@react-three/fiber'
-import { OrbitControls } from '@react-three/drei'
+// OrbitControls removed - camera is now fixed above turret
 import { EffectComposer, Bloom } from '@react-three/postprocessing'
 import * as THREE from 'three'
 import { PlayerTurret } from './game/PlayerTurret'
@@ -12,16 +12,28 @@ import { PauseMenu, PauseButton } from './components/PauseMenu'
 import { JackpotDisplay, CoinSpawner, useJackpotSystem } from './game/JackpotSystem'
 import { Starfield } from './effects/Starfield'
 
-// Screen shake camera component
+// Screen shake camera component - camera is fixed above turret
 function ShakeCamera({ shakeIntensity }: { shakeIntensity: number }) {
   useFrame(({ camera }) => {
+    // Base camera position: fixed above and behind turret
+    const baseX = 0
+    const baseY = 3.5
+    const baseZ = 7
+    
     if (shakeIntensity > 0) {
-      camera.position.x = (Math.random() - 0.5) * shakeIntensity * 0.1
-      camera.position.y = 3.5 + (Math.random() - 0.5) * shakeIntensity * 0.1 // Updated to match new camera position
+      // Apply shake as small offset from base position
+      camera.position.x = baseX + (Math.random() - 0.5) * shakeIntensity * 0.1
+      camera.position.y = baseY + (Math.random() - 0.5) * shakeIntensity * 0.1
+      camera.position.z = baseZ + (Math.random() - 0.5) * shakeIntensity * 0.05
     } else {
-      camera.position.x = 0
-      camera.position.y = 3.5 // Updated to match new camera position
+      // Reset to base position when no shake
+      camera.position.x = baseX
+      camera.position.y = baseY
+      camera.position.z = baseZ
     }
+    
+    // Always look at turret center
+    camera.lookAt(0, 0.5, 0)
   })
   
   return null
@@ -155,7 +167,7 @@ function Scene({
       ))}
       <CoinSpawner coins={coinEntities} onCoinCollect={onCoinCollect} />
       <ShakeCamera shakeIntensity={shakeIntensity} />
-      <OrbitControls />
+      {/* OrbitControls removed - camera is now fixed above turret */}
       <EffectComposer>
         <Bloom 
           intensity={2.0} 

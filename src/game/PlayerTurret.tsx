@@ -326,9 +326,9 @@ export function PlayerTurret({ position, onWeaponChange, onScreenShake }: Player
           <meshStandardMaterial color="#2a9d8f" metalness={0.8} roughness={0.2} />
         </mesh>
         
-                {/* Barrel with recoil animation */}
+                {/* Barrel with recoil animation - pointing toward -Z (toward enemies) */}
                 <mesh 
-                  position={[0, 0.3, 0.5 - recoil]} 
+                  position={[0, 0.3, -0.5 + recoil]} 
                   rotation={[-Math.PI / 2, 0, 0]}
                   scale={[1 + weaponTransition * 0.2, 1, 1 + weaponTransition * 0.2]}
                 >
@@ -342,9 +342,9 @@ export function PlayerTurret({ position, onWeaponChange, onScreenShake }: Player
                   />
                 </mesh>
         
-        {/* Muzzle glow point - intensity increases to 5 when firing */}
+        {/* Muzzle glow point - at barrel tip toward -Z */}
         <pointLight 
-          position={[0, 0.3, 1]} 
+          position={[0, 0.3, -1]} 
           color={getBarrelColor()} 
           intensity={muzzleFlash ? 5 : 1} 
           distance={muzzleFlash ? 4 : 2} 

@@ -116,28 +116,41 @@ export function LancerBeam({ isActive, turretPosition, turretDirection, onHit }:
   
   return (
     <group>
-      {/* Main beam - thicker and more visible */}
+      {/* Main beam core - VERY thick and bright white-hot center */}
       <mesh ref={beamRef}>
-        <cylinderGeometry args={[0.06, 0.10, 20, 12]} />
+        <cylinderGeometry args={[0.15, 0.20, 20, 16]} />
         <meshStandardMaterial
-          color="#ff0000"
-          emissive="#ff0000"
-          emissiveIntensity={emissiveIntensity * 1.5}
+          color="#ffffff"
+          emissive="#ffffff"
+          emissiveIntensity={emissiveIntensity * 3}
           transparent
-          opacity={beamOpacity}
+          opacity={beamOpacity * 1.2}
           toneMapped={false}
         />
       </mesh>
       
-      {/* Beam glow - pulsing effect, more visible */}
+      {/* Beam outer glow - red pulsing effect, MUCH more visible */}
       <mesh ref={glowRef}>
-        <cylinderGeometry args={[0.12, 0.18, 20, 12]} />
+        <cylinderGeometry args={[0.30, 0.40, 20, 16]} />
         <meshStandardMaterial
-          color="#ff4444"
+          color="#ff0000"
           emissive="#ff0000"
+          emissiveIntensity={4 + chargeLevel * 4}
+          transparent
+          opacity={0.5 + chargeLevel * 0.4}
+          toneMapped={false}
+        />
+      </mesh>
+      
+      {/* Extra outer glow for dramatic effect */}
+      <mesh>
+        <cylinderGeometry args={[0.50, 0.60, 20, 16]} />
+        <meshStandardMaterial
+          color="#ff4400"
+          emissive="#ff2200"
           emissiveIntensity={2 + chargeLevel * 2}
           transparent
-          opacity={0.3 + chargeLevel * 0.3}
+          opacity={0.2 + chargeLevel * 0.2}
           toneMapped={false}
         />
       </mesh>
@@ -154,19 +167,19 @@ export function LancerBeam({ isActive, turretPosition, turretDirection, onHit }:
         </bufferGeometry>
         <pointsMaterial
           color="#ff0000"
-          size={0.1 + chargeLevel * 0.05}
+          size={0.2 + chargeLevel * 0.1}
           transparent
-          opacity={0.3 + chargeLevel * 0.4}
+          opacity={0.5 + chargeLevel * 0.4}
           sizeAttenuation
         />
       </points>
       
-      {/* Beam light - intensity increases with charge */}
+      {/* Beam light - MUCH stronger intensity */}
       <pointLight
         position={turretPosition.toArray()}
         color="#ff0000"
-        intensity={3 + chargeLevel * 4}
-        distance={4 + chargeLevel * 2}
+        intensity={10 + chargeLevel * 10}
+        distance={8 + chargeLevel * 4}
       />
     </group>
   )

@@ -11,6 +11,7 @@ export function GravityNova({ position, onComplete }: GravityNovaProps) {
   const sphereRef = useRef<THREE.Mesh>(null)
   const [scale, setScale] = useState(0.1)
   const [opacity, setOpacity] = useState(1)
+  const [pulseIntensity, setPulseIntensity] = useState(0) // For damage tick visual feedback
   const { scene } = useThree()
   
   // Time-based state for persistent nova
@@ -23,10 +24,10 @@ export function GravityNova({ position, onComplete }: GravityNovaProps) {
     
     elapsedRef.current += delta
     
-    // Scale grows over lifetime then shrinks at the end
+    // Scale grows over lifetime then shrinks at the end - LARGER for visibility
     const growPhase = Math.min(1, elapsedRef.current / 0.5) // Grow for first 0.5s
     const shrinkPhase = Math.max(0, (elapsedRef.current - (lifeTime - 0.5)) / 0.5) // Shrink in last 0.5s
-    const newScale = 0.1 + growPhase * 4 - shrinkPhase * 2
+    const newScale = 0.1 + growPhase * 6 - shrinkPhase * 3 // Larger scale (was 4)
     setScale(Math.max(0.1, newScale))
     
     // Opacity fades at the end
@@ -35,9 +36,17 @@ export function GravityNova({ position, onComplete }: GravityNovaProps) {
       : 1
     setOpacity(newOpacity)
     
+    // Decay pulse intensity
+    if (pulseIntensity > 0) {
+      setPulseIntensity(prev => Math.max(0, prev - delta * 4))
+    }
+    
     // Apply continuous AOE damage every 0.5 seconds
     if (elapsedRef.current >= nextDamageTickRef.current && elapsedRef.current < lifeTime) {
       nextDamageTickRef.current += 0.5 // Next tick in 0.5s
+      
+      // Visual pulse on damage tick
+      setPulseIntensity(1)
       
       const novaPosition = new THREE.Vector3(...position)
       const radius = 7 // Increased radius (was 5)
@@ -70,51 +79,64 @@ export function GravityNova({ position, onComplete }: GravityNovaProps) {
   
   return (
     <group position={position}>
-      {/* Main nova sphere */}
+      {/* Main nova sphere - LARGER and more visible */}
       <mesh ref={sphereRef} scale={[scale, scale, scale]}>
         <icosahedronGeometry args={[1, 2]} />
         <meshStandardMaterial
-          color="#8800ff"
-          emissive="#aa00ff"
-          emissiveIntensity={3}
+          color="#aa00ff"
+          emissive="#ff00ff"
+          emissiveIntensity={4 + pulseIntensity * 6}
           transparent
-          opacity={opacity * 0.6}
+          opacity={opacity * 0.7}
           wireframe
           toneMapped={false}
         />
       </mesh>
       
-      {/* Inner glow */}
+      {/* Inner glow - brighter on damage tick */}
       <mesh scale={[scale * 0.8, scale * 0.8, scale * 0.8]}>
         <sphereGeometry args={[1, 16, 16]} />
         <meshStandardMaterial
-          color="#cc00ff"
-          emissive="#ff00ff"
-          emissiveIntensity={2}
-          transparent
-          opacity={opacity * 0.4}
-          toneMapped={false}
-        />
-      </mesh>
-      
-      {/* Outer distortion ring */}
-      <mesh scale={[scale * 1.2, scale * 0.3, scale * 1.2]} rotation={[Math.PI / 2, 0, 0]}>
-        <torusGeometry args={[1, 0.2, 8, 32]} />
-        <meshStandardMaterial
           color="#ff00ff"
-          emissive="#ff00ff"
-          emissiveIntensity={2}
+          emissive="#ff44ff"
+          emissiveIntensity={3 + pulseIntensity * 5}
           transparent
           opacity={opacity * 0.5}
           toneMapped={false}
         />
       </mesh>
       
-      {/* Nova light */}
+      {/* Outer distortion ring - pulses on damage tick */}
+      <mesh scale={[scale * (1.2 + pulseIntensity * 0.3), scale * 0.3, scale * (1.2 + pulseIntensity * 0.3)]} rotation={[Math.PI / 2, 0, 0]}>
+        <torusGeometry args={[1, 0.3, 8, 32]} />
+        <meshStandardMaterial
+          color="#ff00ff"
+          emissive="#ff00ff"
+          emissiveIntensity={3 + pulseIntensity * 4}
+          transparent
+          opacity={opacity * 0.6}
+          toneMapped={false}
+        />
+      </mesh>
+      
+      {/* Second ring for more dramatic effect */}
+      <mesh scale={[scale * 1.0, scale * 0.2, scale * 1.0]} rotation={[0, 0, 0]}>
+        <torusGeometry args={[1, 0.2, 8, 32]} />
+        <meshStandardMaterial
+          color="#aa00ff"
+          emissive="#aa00ff"
+          emissiveIntensity={2 + pulseIntensity * 3}
+          transparent
+          opacity={opacity * 0.4}
+          toneMapped={false}
+        />
+      </mesh>
+      
+      {/* Nova light - MUCH stronger, pulses on damage */}
       <pointLight
-        color="#aa00ff"
-        intensity={opacity * 10}
-        distance={10}
+        color="#ff00ff"
+        intensity={opacity * (15 + pulseIntensity * 10)}
+        distance={15}
       />
     </group>
   )
