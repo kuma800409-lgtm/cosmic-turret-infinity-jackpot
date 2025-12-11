@@ -10,6 +10,7 @@ interface EnemyProps {
 }
 
 export function Enemy({ position, onDestroy, onDamage, onReachTurret }: EnemyProps) {
+  const groupRef = useRef<THREE.Group>(null)
   const meshRef = useRef<THREE.Mesh>(null)
   const [health, setHealth] = useState(100)
   const [isHit, setIsHit] = useState(false)
@@ -19,7 +20,7 @@ export function Enemy({ position, onDestroy, onDamage, onReachTurret }: EnemyPro
   const isDyingRef = useRef(false)
   
     useFrame((state, delta) => {
-      if (!meshRef.current) return
+      if (!groupRef.current || !meshRef.current) return
     
       // Death animation
       if (isDying) {
@@ -30,13 +31,14 @@ export function Enemy({ position, onDestroy, onDamage, onReachTurret }: EnemyPro
         meshRef.current.rotation.y += delta * 15
         meshRef.current.rotation.x += delta * 10
         if (deathTimeRef.current > 0.3) {
-          onDestroy(true, meshRef.current.position.clone())
+          onDestroy(true, groupRef.current.position.clone())
         }
         return
       }
     
       if (health > 0) {
-        meshRef.current.position.z += delta * 0.5
+        // Move the group (which holds the position)
+        groupRef.current.position.z += delta * 0.5
       
         // Rotation animation - enemies spin as they approach
         meshRef.current.rotation.y += delta * 2
@@ -47,9 +49,9 @@ export function Enemy({ position, onDestroy, onDamage, onReachTurret }: EnemyPro
         meshRef.current.scale.setScalar(pulse)
       
         // Enemy reached turret - deal damage
-        if (meshRef.current.position.z > 1.5) {
+        if (groupRef.current.position.z > 1.5) {
           onReachTurret?.()
-          onDestroy(false, meshRef.current.position.clone())
+          onDestroy(false, groupRef.current.position.clone())
         }
       }
     })
@@ -62,8 +64,8 @@ export function Enemy({ position, onDestroy, onDamage, onReachTurret }: EnemyPro
     setTimeout(() => setIsHit(false), 100)
     
     // Report damage for UI
-    if (meshRef.current) {
-      onDamage?.(damage, meshRef.current.position.clone())
+    if (groupRef.current) {
+      onDamage?.(damage, groupRef.current.position.clone())
     }
     
     // Update health using ref for immediate access
@@ -76,21 +78,19 @@ export function Enemy({ position, onDestroy, onDamage, onReachTurret }: EnemyPro
     }
   }, [onDamage])
   
-  // Update userData when takeDamage changes
+  // Update userData on the GROUP (not mesh) so scene.traverse can find it
+  // Also update when isDying changes to prevent multiple hits on dying enemies
   useEffect(() => {
-    if (meshRef.current) {
-      meshRef.current.userData = { takeDamage, type: 'enemy' }
+    if (groupRef.current) {
+      groupRef.current.userData = { takeDamage, type: 'enemy', isDying }
     }
-  }, [takeDamage])
+  }, [takeDamage, isDying])
   
   if (health <= 0 && !isDying) return null
   
   return (
-    <group>
-      <mesh 
-        ref={meshRef} 
-        position={position}
-      >
+    <group ref={groupRef} position={position}>
+      <mesh ref={meshRef}>
         <boxGeometry args={[0.5, 0.5, 0.5]} />
         <meshStandardMaterial 
           color={isHit ? '#ffffff' : '#ff0000'}
@@ -100,9 +100,9 @@ export function Enemy({ position, onDestroy, onDamage, onReachTurret }: EnemyPro
       </mesh>
       
       {/* Hit flash light */}
-      {isHit && meshRef.current && (
+      {isHit && (
         <pointLight
-          position={meshRef.current.position.toArray()}
+          position={[0, 0, 0]}
           color="#ffffff"
           intensity={5}
           distance={3}
